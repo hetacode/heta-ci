@@ -1,11 +1,12 @@
 package main
 
 import (
-	"bufio"
 	"context"
 	"fmt"
 	"io/ioutil"
 	"time"
+
+	utilsio "github.com/hetacode/heta-ci/agent/utils/io"
 
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
@@ -61,30 +62,35 @@ func main() {
 	}
 
 	fmt.Println("container is running")
-	go func() {
-		logOutReader, err := client.ContainerLogs(ctx, containerRes.ID, types.ContainerLogsOptions{ShowStdout: true, Follow: true})
-		if err != nil {
-			fmt.Printf("docker logs reading err: %s", err)
-			return
-		}
-		scan := bufio.NewScanner(logOutReader)
-		for scan.Scan() {
-			fmt.Println(scan.Text())
-		}
-		fmt.Println("end logs")
-	}()
 
-	go func() {
-		containerAttach, err := client.ContainerAttach(ctx, containerRes.ID, types.ContainerAttachOptions{Stream: true, Stdin: true, Stdout: true})
-		defer containerAttach.Close()
-		if err != nil {
-			fmt.Printf("docker container attach err: %s", err)
-			return
-		}
-		containerAttach.Conn.Write([]byte("echo 'test'\n"))
-		containerAttach.Conn.Write([]byte("pwd\n"))
-		containerAttach.Conn.Write([]byte("uname -a\n"))
-	}()
+	containerAttach, err := client.ContainerAttach(ctx, containerRes.ID, types.ContainerAttachOptions{Stream: true, Stdin: true, Stdout: true})
+	defer containerAttach.Close()
+	if err != nil {
+		fmt.Printf("docker container attach err: %s", err)
+		return
+	}
+	containerAttach.Conn.Write([]byte("echo 'test'\n"))
+	l, _ := containerAttach.Reader.ReadBytes('\n')
+	fmt.Println(string(l))
+	l, _ = containerAttach.Reader.ReadBytes('\n')
+	fmt.Println(string(l))
 
-	time.Sleep(10 * time.Second)
+	containerAttach.Conn.Write([]byte("pwd\n"))
+	l, _ = containerAttach.Reader.ReadBytes('\n')
+	fmt.Println(string(l))
+	l, _ = containerAttach.Reader.ReadBytes('\n')
+	fmt.Println(string(l))
+
+	containerAttach.Conn.Write([]byte("uname -a\n"))
+	l, _ = containerAttach.Reader.ReadBytes('\n')
+	fmt.Println(string(l))
+	l, _ = containerAttach.Reader.ReadBytes('\n')
+	fmt.Println(string(l))
+
+	containerAttach.Conn.Write([]byte("cd /etc && ls -al\n"))
+	l, _ = containerAttach.Reader.ReadBytes('\n')
+	fmt.Println(string(l))
+
+	bytes, _ := utilsio.ReadWithTimeout(containerAttach.Reader, time.Second)
+	fmt.Print(string(bytes))
 }
