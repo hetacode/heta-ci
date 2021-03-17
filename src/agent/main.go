@@ -37,10 +37,11 @@ func main() {
 	containerRes, err := client.ContainerCreate(
 		ctx,
 		&container.Config{
-			Image:     "ubuntu:20.10",
-			Tty:       true,
-			OpenStdin: true,
-			Cmd:       []string{"uname", "-a"},
+			Image:        "ubuntu:20.10",
+			Tty:          true,
+			OpenStdin:    true,
+			AttachStdout: true,
+			Cmd:          []string{"/bin/sh"},
 		},
 		&container.HostConfig{},
 		nil, nil, ImageName,
@@ -68,9 +69,21 @@ func main() {
 		}
 		scan := bufio.NewScanner(logOutReader)
 		for scan.Scan() {
-
 			fmt.Println(scan.Text())
 		}
+		fmt.Println("end logs")
+	}()
+
+	go func() {
+		containerAttach, err := client.ContainerAttach(ctx, containerRes.ID, types.ContainerAttachOptions{Stream: true, Stdin: true, Stdout: true})
+		defer containerAttach.Close()
+		if err != nil {
+			fmt.Printf("docker container attach err: %s", err)
+			return
+		}
+		containerAttach.Conn.Write([]byte("echo 'test'\n"))
+		containerAttach.Conn.Write([]byte("pwd\n"))
+		containerAttach.Conn.Write([]byte("uname -a\n"))
 	}()
 
 	time.Sleep(10 * time.Second)
