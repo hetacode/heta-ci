@@ -20,6 +20,8 @@ func ReadWithTimeout(r io.Reader, timeout time.Duration) ([]byte, error) {
 		bytesChunkCh := make(chan readerData)
 		bytes := make([]byte, 0)
 		tch := time.NewTimer(timeout)
+		defer tch.Stop()
+
 		for {
 			go readBytesChunk(bytesChunkCh, r)
 			// Reset timer

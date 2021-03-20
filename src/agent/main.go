@@ -70,27 +70,37 @@ func main() {
 		return
 	}
 	containerAttach.Conn.Write([]byte("echo 'test'\n"))
-	l, _ := containerAttach.Reader.ReadBytes('\n')
+	l, _ := utilsio.ReadWithTimeout(containerAttach.Reader, time.Second*1)
 	fmt.Println(string(l))
-	l, _ = containerAttach.Reader.ReadBytes('\n')
-	fmt.Println(string(l))
-
-	containerAttach.Conn.Write([]byte("pwd\n"))
-	l, _ = containerAttach.Reader.ReadBytes('\n')
-	fmt.Println(string(l))
-	l, _ = containerAttach.Reader.ReadBytes('\n')
-	fmt.Println(string(l))
-
-	containerAttach.Conn.Write([]byte("uname -a\n"))
-	l, _ = containerAttach.Reader.ReadBytes('\n')
-	fmt.Println(string(l))
-	l, _ = containerAttach.Reader.ReadBytes('\n')
-	fmt.Println(string(l))
-
-	containerAttach.Conn.Write([]byte("cd /etc && ls -al\n"))
-	l, _ = containerAttach.Reader.ReadBytes('\n')
-	fmt.Println(string(l))
-
-	bytes, _ := utilsio.ReadWithTimeout(containerAttach.Reader, time.Second)
+	bytes, _ := utilsio.ReadWithTimeout(containerAttach.Reader, time.Second*1)
 	fmt.Print(string(bytes))
+
+	fmt.Println("-----------------")
+	containerAttach, _ = client.ContainerAttach(ctx, containerRes.ID, types.ContainerAttachOptions{Stream: true, Stdin: true, Stdout: true})
+	defer containerAttach.Close()
+	containerAttach.Conn.Write([]byte("pwd\n"))
+	l, _ = utilsio.ReadWithTimeout(containerAttach.Reader, time.Second*1)
+	fmt.Println(string(l))
+	bytes, _ = utilsio.ReadWithTimeout(containerAttach.Reader, time.Second*1)
+	fmt.Print(string(bytes))
+
+	fmt.Println("-----------------")
+	containerAttach, _ = client.ContainerAttach(ctx, containerRes.ID, types.ContainerAttachOptions{Stream: true, Stdin: true, Stdout: true})
+	defer containerAttach.Close()
+	containerAttach.Conn.Write([]byte("uname -a\n"))
+	l, _ = utilsio.ReadWithTimeout(containerAttach.Conn, time.Second*1)
+	fmt.Println(string(l))
+	bytes, _ = utilsio.ReadWithTimeout(containerAttach.Reader, time.Second*1)
+	fmt.Print(string(bytes))
+
+	fmt.Println("-----------------")
+	containerAttach, _ = client.ContainerAttach(ctx, containerRes.ID, types.ContainerAttachOptions{Stream: true, Stdin: true, Stdout: true})
+	defer containerAttach.Close()
+	containerAttach.Conn.Write([]byte("cd /etc && ls -al\n"))
+	l, _ = utilsio.ReadWithTimeout(containerAttach.Reader, time.Second*1)
+	fmt.Println(string(l))
+	bytes, _ = utilsio.ReadWithTimeout(containerAttach.Reader, time.Second*1)
+	fmt.Print(string(bytes))
+
+	fmt.Println("-----------------")
 }
