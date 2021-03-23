@@ -16,8 +16,6 @@ import (
 	"github.com/docker/docker/client"
 )
 
-const ImageName = "ubuntu-test"
-
 func main() {
 	ctx := context.Background()
 	client, err := client.NewClientWithOpts()
@@ -57,7 +55,7 @@ func main() {
 				},
 			},
 		},
-		nil, nil, ImageName,
+		nil, nil, ContainerName,
 	)
 	defer client.ContainerRemove(ctx, containerRes.ID, types.ContainerRemoveOptions{Force: true})
 
@@ -66,7 +64,7 @@ func main() {
 		return
 	}
 
-	fmt.Printf("container is created | id: %s | name: %s\n", containerRes.ID, ImageName)
+	fmt.Printf("container is created | id: %s | name: %s\n", containerRes.ID, ContainerName)
 
 	if err := client.ContainerStart(ctx, containerRes.ID, types.ContainerStartOptions{}); err != nil {
 		fmt.Printf("docker start err: %s", err)
