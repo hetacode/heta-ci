@@ -4,12 +4,14 @@ import (
 	"context"
 	"fmt"
 	"io/ioutil"
+	"os"
 	"time"
 
 	utilsio "github.com/hetacode/heta-ci/agent/utils/io"
 
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
+	"github.com/docker/docker/api/types/mount"
 	"github.com/docker/docker/client"
 )
 
@@ -34,7 +36,7 @@ func main() {
 
 	pullReaderBytes, _ := ioutil.ReadAll(pullReader)
 	fmt.Print(string(pullReaderBytes))
-
+	pwd, _ := os.Getwd()
 	containerRes, err := client.ContainerCreate(
 		ctx,
 		&container.Config{
@@ -42,9 +44,18 @@ func main() {
 			Tty:          true,
 			OpenStdin:    true,
 			AttachStdout: true,
-			Cmd:          []string{"/bin/sh"},
+			Cmd:          []string{"/bin/bash"},
+			WorkingDir:   "/data",
 		},
-		&container.HostConfig{},
+		&container.HostConfig{
+			Mounts: []mount.Mount{
+				{
+					Type:   mount.TypeBind,
+					Source: pwd + "/tests",
+					Target: "/data",
+				},
+			},
+		},
 		nil, nil, ImageName,
 	)
 	defer client.ContainerRemove(ctx, containerRes.ID, types.ContainerRemoveOptions{Force: true})
@@ -62,45 +73,14 @@ func main() {
 	}
 
 	fmt.Println("container is running")
-
-	containerAttach, err := client.ContainerAttach(ctx, containerRes.ID, types.ContainerAttachOptions{Stream: true, Stdin: true, Stdout: true})
+	scriptCommand := "/bin/bash -e %s|| echo \"Error: exit code $?\"\n"
+	containerAttach, _ := client.ContainerAttach(ctx, containerRes.ID, types.ContainerAttachOptions{Stream: true, Stdin: true, Stdout: true, Stderr: true})
 	defer containerAttach.Close()
-	if err != nil {
-		fmt.Printf("docker container attach err: %s", err)
-		return
-	}
-	containerAttach.Conn.Write([]byte("echo 'test'\n"))
+	containerAttach.Conn.Write([]byte(fmt.Sprintf(scriptCommand, "/data/test_correct.sh")))
 	l, _ := utilsio.ReadWithTimeout(containerAttach.Reader, time.Second*1)
 	fmt.Println(string(l))
-	bytes, _ := utilsio.ReadWithTimeout(containerAttach.Reader, time.Second*1)
-	fmt.Print(string(bytes))
 
-	fmt.Println("-----------------")
-	containerAttach, _ = client.ContainerAttach(ctx, containerRes.ID, types.ContainerAttachOptions{Stream: true, Stdin: true, Stdout: true})
-	defer containerAttach.Close()
-	containerAttach.Conn.Write([]byte("pwd\n"))
+	containerAttach.Conn.Write([]byte(fmt.Sprintf(scriptCommand, "/data/test_fail.sh")))
 	l, _ = utilsio.ReadWithTimeout(containerAttach.Reader, time.Second*1)
 	fmt.Println(string(l))
-	bytes, _ = utilsio.ReadWithTimeout(containerAttach.Reader, time.Second*1)
-	fmt.Print(string(bytes))
-
-	fmt.Println("-----------------")
-	containerAttach, _ = client.ContainerAttach(ctx, containerRes.ID, types.ContainerAttachOptions{Stream: true, Stdin: true, Stdout: true})
-	defer containerAttach.Close()
-	containerAttach.Conn.Write([]byte("uname -a\n"))
-	l, _ = utilsio.ReadWithTimeout(containerAttach.Conn, time.Second*1)
-	fmt.Println(string(l))
-	bytes, _ = utilsio.ReadWithTimeout(containerAttach.Reader, time.Second*1)
-	fmt.Print(string(bytes))
-
-	fmt.Println("-----------------")
-	containerAttach, _ = client.ContainerAttach(ctx, containerRes.ID, types.ContainerAttachOptions{Stream: true, Stdin: true, Stdout: true})
-	defer containerAttach.Close()
-	containerAttach.Conn.Write([]byte("cd /etc && ls -al\n"))
-	l, _ = utilsio.ReadWithTimeout(containerAttach.Reader, time.Second*1)
-	fmt.Println(string(l))
-	bytes, _ = utilsio.ReadWithTimeout(containerAttach.Reader, time.Second*1)
-	fmt.Print(string(bytes))
-
-	fmt.Println("-----------------")
 }
