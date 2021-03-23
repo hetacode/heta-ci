@@ -2,14 +2,17 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"io/ioutil"
 	"log"
-	"os"
+	"strings"
+	"time"
 
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/api/types/mount"
 	"github.com/docker/docker/client"
+	utilsio "github.com/hetacode/heta-ci/agent/utils/io"
 )
 
 const ContainerName = "hetaci-agent-job"
@@ -20,7 +23,7 @@ type Container struct {
 }
 
 // NewContainer pull docker image, create container and run it
-func NewContainer(image string) *Container {
+func NewContainer(image string, pipelineTempDir string) *Container {
 	ctx := context.Background()
 	client, err := client.NewClientWithOpts()
 	if err != nil {
@@ -39,7 +42,7 @@ func NewContainer(image string) *Container {
 
 	pullReaderBytes, _ := ioutil.ReadAll(pullReader)
 	log.Print(string(pullReaderBytes))
-	pwd, _ := os.Getwd()
+
 	containerRes, err := client.ContainerCreate(
 		ctx,
 		&container.Config{
@@ -54,7 +57,7 @@ func NewContainer(image string) *Container {
 			Mounts: []mount.Mount{
 				{
 					Type:   mount.TypeBind,
-					Source: pwd + "/tests", // TODO: from constructor parameter
+					Source: pipelineTempDir, // TODO: from constructor parameter
 					Target: "/pipeline",
 				},
 			},
@@ -82,6 +85,27 @@ func NewContainer(image string) *Container {
 	}
 
 	return c
+}
+
+func (c *Container) ExecuteScript(scriptName string, logCh chan string) error {
+	scriptCommand := "/bin/bash -e /pipeline/scripts/%s || echo \"Error: exit code $?\"\n"
+
+	containerAttach, _ := c.client.ContainerAttach(context.Background(), c.piplineContainerID, types.ContainerAttachOptions{Stream: true, Stdin: true, Stdout: true, Stderr: true})
+	defer containerAttach.Close()
+	containerAttach.Conn.Write([]byte(fmt.Sprintf(scriptCommand, scriptName)))
+	l, _ := utilsio.ReadWithTimeout(containerAttach.Reader, time.Second*1)
+	result := string(l)
+	logCh <- result
+
+	if len(result) > 30 {
+		end := result[:len(result)-30]
+		log.Printf("\nend: %s\n", end)
+		if strings.Contains(end, "Error: exit code") && !strings.Contains(end, "echo") {
+			return fmt.Errorf("script %s execute with error", scriptName)
+		}
+	}
+
+	return nil
 }
 
 // Dispose container resources
