@@ -7,6 +7,7 @@ import (
 	"os"
 	"time"
 
+	"github.com/hetacode/heta-ci/agent/structs"
 	utilsio "github.com/hetacode/heta-ci/agent/utils/io"
 
 	"github.com/docker/docker/api/types"
@@ -83,4 +84,36 @@ func main() {
 	containerAttach.Conn.Write([]byte(fmt.Sprintf(scriptCommand, "/data/test_fail.sh")))
 	l, _ = utilsio.ReadWithTimeout(containerAttach.Reader, time.Second*1)
 	fmt.Println(string(l))
+}
+
+func preparePipeline() *structs.Pipeline {
+	pipeline := &structs.Pipeline{
+		Name: "Test shell scripts in one container",
+		Jobs: []structs.Job{
+			{
+				Name:   "Container job",
+				Runner: "ubuntu:20.10",
+				Tasks: []structs.Task{
+					{
+						Name: "Correct script",
+						Command: []string{
+							"echo Start",
+							"cd /etc && ls -al",
+							"echo End",
+						},
+					},
+					{
+						Name: "Failed script",
+						Command: []string{
+							"echo Start",
+							"cd /etc && lt -al",
+							"echo End",
+						},
+					},
+				},
+			},
+		},
+	}
+
+	return pipeline
 }
