@@ -40,7 +40,7 @@ func (p *PipelineProcessor) Dispose() {
 }
 
 func (p *PipelineProcessor) executeJob(j structs.Job) {
-	p.logChannel <- fmt.Sprintf("run '%s' job", j.Name)
+	p.logChannel <- fmt.Sprintf("run '%s' job", j.DisplayName)
 
 	pwd, _ := os.Getwd()
 	pipelineTempDir := pwd + "/pipeline" // TODO: should be set up via cli parameter
@@ -66,11 +66,11 @@ func (p *PipelineProcessor) executeJob(j structs.Job) {
 			// TODO: in future check if any other task should be run on fail this one
 		}
 	}
-	p.logChannel <- fmt.Sprintf("job '%s' finished", j.Name)
+	p.logChannel <- fmt.Sprintf("job '%s' finished", j.DisplayName)
 }
 
 func (p *PipelineProcessor) executeTask(t structs.Task, c *Container, scriptsDir string) error {
-	p.logChannel <- fmt.Sprintf("run '%s' task", t.Name)
+	p.logChannel <- fmt.Sprintf("run '%s' task", t.DisplayName)
 
 	// Prepare script file
 	uid, _ := uuid.GenerateUUID()
@@ -78,11 +78,11 @@ func (p *PipelineProcessor) executeTask(t structs.Task, c *Container, scriptsDir
 	script := createScript(t.Command)
 	f, err := os.Create(path.Join(scriptsDir, filename))
 	if err != nil {
-		return fmt.Errorf("execute task '%s' - create script err: %s", t.Name, err)
+		return fmt.Errorf("execute task '%s' - create script err: %s", t.DisplayName, err)
 	}
 	_, err = f.Write(script)
 	if err != nil {
-		return fmt.Errorf("execute task '%s' - save script err: %s", t.Name, err)
+		return fmt.Errorf("execute task '%s' - save script err: %s", t.DisplayName, err)
 
 	}
 	f.Chmod(775) // execute
@@ -93,7 +93,7 @@ func (p *PipelineProcessor) executeTask(t structs.Task, c *Container, scriptsDir
 		return err
 	}
 
-	p.logChannel <- fmt.Sprintf("task '%s' done", t.Name)
+	p.logChannel <- fmt.Sprintf("task '%s' done", t.DisplayName)
 	return nil
 }
 

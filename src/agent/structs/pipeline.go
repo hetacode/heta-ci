@@ -6,12 +6,30 @@ type Pipeline struct {
 }
 
 type Job struct {
-	Name   string
-	Runner string
-	Tasks  []Task
+	ID          string // unique name on jobs level
+	DisplayName string
+	Runner      string
+	Tasks       []Task
+	Conditons   []Conditon
 }
 
 type Task struct {
-	Name    string
-	Command []string // one or more
+	ID          string // unique name on tasks level
+	DisplayName string
+	Command     []string // one or more
+	Conditons   []Conditon
 }
+
+type Conditon struct {
+	// when run
+	Type ConditionType
+	// which job/task should trigger this condition "owner"
+	On string
+}
+
+type ConditionType string
+
+const (
+	OnFailure ConditionType = "on_failure"
+	OnSuccess               = "on_success"
+)

@@ -48,11 +48,13 @@ func preparePipeline() *structs.Pipeline {
 		Name: "Test shell scripts in one container",
 		Jobs: []structs.Job{
 			{
-				Name:   "Container job",
-				Runner: "ubuntu:20.10",
+				ID:          "test",
+				DisplayName: "Container job",
+				Runner:      "ubuntu:20.10",
 				Tasks: []structs.Task{
 					{
-						Name: "Correct script",
+						ID:          "correct",
+						DisplayName: "Correct script",
 						Command: []string{
 							"echo Start",
 							"cd /etc && ls -al",
@@ -60,11 +62,26 @@ func preparePipeline() *structs.Pipeline {
 						},
 					},
 					{
-						Name: "Failed script",
+						ID:          "fail",
+						DisplayName: "Failed script",
 						Command: []string{
 							"echo Start",
 							"cd /etc && lt -al",
 							"echo End",
+						},
+					},
+					{
+						ID:          "on_success_correct_task",
+						DisplayName: "Launch when 'test' task finish successfuly",
+						Conditons: []structs.Conditon{
+							{
+								Type: structs.OnSuccess,
+								On:   "correct",
+							},
+						},
+						Command: []string{
+							"apt install figlet",
+							"figlet Success",
 						},
 					},
 				},
