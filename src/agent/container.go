@@ -5,14 +5,14 @@ import (
 	"fmt"
 	"io/ioutil"
 	"log"
-	"strings"
 	"time"
+
+	utilsuio "github.com/hetacode/heta-ci/agent/utils/io"
 
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/api/types/mount"
 	"github.com/docker/docker/client"
-	utilsio "github.com/hetacode/heta-ci/agent/utils/io"
 )
 
 const ContainerName = "hetaci-agent-job"
@@ -88,21 +88,25 @@ func NewContainer(image string, pipelineTempDir string) *Container {
 }
 
 func (c *Container) ExecuteScript(scriptName string, logCh chan string) error {
-	scriptCommand := "/bin/bash -e /pipeline/scripts/%s || echo \"Error: exit code $?\"\n"
+	scriptCommand := "/pipeline/scripts/" + scriptName
 
-	containerAttach, _ := c.client.ContainerAttach(context.Background(), c.piplineContainerID, types.ContainerAttachOptions{Stream: true, Stdin: true, Stdout: true, Stderr: true})
-	defer containerAttach.Close()
-	containerAttach.Conn.Write([]byte(fmt.Sprintf(scriptCommand, scriptName)))
-	l, _ := utilsio.ReadWithTimeout(containerAttach.Reader, time.Second*1)
+	config := types.ExecConfig{
+		Detach:       false,
+		Tty:          true,
+		AttachStdout: true,
+		Cmd:          []string{"/bin/bash", "-e", scriptCommand},
+	}
+	containerExecCreate, _ := c.client.ContainerExecCreate(context.Background(), c.piplineContainerID, config)
+	r, _ := c.client.ContainerExecAttach(context.Background(), containerExecCreate.ID, types.ExecStartCheck{Detach: false})
+	l, _ := utilsuio.ReadWithTimeout(r.Reader, time.Second*1)
+
+	insp, _ := c.client.ContainerExecInspect(context.Background(), containerExecCreate.ID)
+
 	result := string(l)
 	logCh <- result
 
-	if len(result) > 30 {
-		end := result[:len(result)-30]
-		log.Printf("\nend: %s\n", end)
-		if strings.Contains(end, "Error: exit code") && !strings.Contains(end, "echo") {
-			return fmt.Errorf("script %s execute with error", scriptName)
-		}
+	if insp.ExitCode != 0 {
+		return fmt.Errorf("Error: Process completed with exit code: %d", insp.ExitCode)
 	}
 
 	return nil

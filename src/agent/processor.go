@@ -42,11 +42,11 @@ func (p *PipelineProcessor) executeJob(j structs.Job) {
 
 	os.RemoveAll(pipelineTempDir)
 	if err := os.Mkdir(pipelineTempDir, os.ModePerm); err != nil {
-		log.Fatalf("create pipeline temp directory err: %s", err)
+		log.Panicf("create pipeline temp directory err: %s", err)
 	}
 	scriptsDir := pipelineTempDir + "/scripts"
 	if err := os.Mkdir(scriptsDir, os.ModePerm); err != nil {
-		log.Fatalf("create scripts directory err: %s", err)
+		log.Panicf("create scripts directory err: %s", err)
 	}
 	defer os.RemoveAll(pipelineTempDir)
 
@@ -67,18 +67,18 @@ func (p *PipelineProcessor) executeTask(t structs.Task, c *Container, scriptsDir
 	script := createScript(t.Command)
 	f, err := os.Create(path.Join(scriptsDir, filename))
 	if err != nil {
-		log.Fatalf("execute task '%s' - create script err: %s", t.Name, err)
+		log.Panicf("execute task '%s' - create script err: %s", t.Name, err)
 	}
 	_, err = f.Write(script)
 	if err != nil {
-		log.Fatalf("execute task '%s' - save script err: %s", t.Name, err)
+		log.Panicf("execute task '%s' - save script err: %s", t.Name, err)
 	}
 	f.Chmod(775)
 	f.Close()
 
 	// Execute script inside container
 	if err := c.ExecuteScript(filename, p.logChannel); err != nil {
-		log.Fatal(err)
+		log.Panic(err)
 	}
 
 	p.logChannel <- fmt.Sprintf("task %s done", t.Name)
