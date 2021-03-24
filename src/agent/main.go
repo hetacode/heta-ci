@@ -10,7 +10,8 @@ import (
 func main() {
 	timeoutCh := make(chan struct{})
 	defer close(timeoutCh)
-	p := NewPipelineProcessor(preparePipeline())
+	pt := NewPipelineTriggers()
+	p := NewPipelineProcessor(preparePipeline(), pt)
 	defer p.Dispose()
 
 	go p.Run()

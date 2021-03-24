@@ -11,17 +11,20 @@ import (
 )
 
 type PipelineProcessor struct {
-	pipeline     *structs.Pipeline
-	logChannel   chan string
-	errorChannel chan string
+	pipelineTriggers *PipelineTriggers
+	pipeline         *structs.Pipeline
+	logChannel       chan string
+	errorChannel     chan string
 }
 
-func NewPipelineProcessor(pipeline *structs.Pipeline) *PipelineProcessor {
+func NewPipelineProcessor(pipeline *structs.Pipeline, pt *PipelineTriggers) *PipelineProcessor {
 	p := &PipelineProcessor{
-		pipeline:     pipeline,
-		logChannel:   make(chan string),
-		errorChannel: make(chan string),
+		pipelineTriggers: pt,
+		pipeline:         pipeline,
+		logChannel:       make(chan string),
+		errorChannel:     make(chan string),
 	}
+	p.parsePipelineForTriggersRegistration()
 
 	return p
 }
@@ -37,6 +40,15 @@ func (p *PipelineProcessor) Run() {
 func (p *PipelineProcessor) Dispose() {
 	close(p.errorChannel)
 	close(p.logChannel)
+}
+
+func (p *PipelineProcessor) parsePipelineForTriggersRegistration() {
+	for _, j := range p.pipeline.Jobs {
+		p.pipelineTriggers.RegisterJob(j)
+		for _, t := range j.Tasks {
+			p.pipelineTriggers.RegisterTask(j.ID, t)
+		}
+	}
 }
 
 func (p *PipelineProcessor) executeJob(j structs.Job) {
