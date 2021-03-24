@@ -6,7 +6,7 @@ type Pipeline struct {
 }
 
 type Job struct {
-	ID          string // unique name on jobs level
+	ID          string // unique name on jobs level - no whitespaces, no special chars
 	DisplayName string
 	Runner      string
 	Tasks       []Task
@@ -14,7 +14,7 @@ type Job struct {
 }
 
 type Task struct {
-	ID          string // unique name on tasks level
+	ID          string // unique name on tasks level - no whitespaces, no special chars
 	DisplayName string
 	Command     []string // one or more
 	Conditons   []Conditon
