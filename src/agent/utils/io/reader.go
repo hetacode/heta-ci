@@ -22,28 +22,39 @@ func ReadWithTimeout(r io.Reader, timeout time.Duration) ([]byte, error) {
 		tch := time.NewTimer(timeout)
 		defer tch.Stop()
 
+		var err error
+		isRunning := true
 		for {
+			if !isRunning {
+				break
+			}
 			go readBytesChunk(bytesChunkCh, r)
 			// Reset timer
 			tch.Reset(timeout)
 
 			select {
-			case bmCh := <-bytesChunkCh:
+			case bmCh, more := <-bytesChunkCh:
 				bytes = append(bytes, bmCh.bytes...)
+
 				if bmCh.err != nil {
-					bytesCh <- readerData{
-						bytes: bytes,
-						err:   bmCh.err,
-					}
-					return
+					err = bmCh.err
+					isRunning = false
+					break
+				}
+				if !more {
+					isRunning = false
+					break
 				}
 			case <-tch.C:
-				bytesCh <- readerData{
-					bytes: bytes,
-					err:   nil,
-				}
-				return
+				tch.Stop()
+				isRunning = false
+				break
 			}
+		}
+
+		bytesCh <- readerData{
+			bytes: bytes,
+			err:   err,
 		}
 	}()
 
@@ -61,6 +72,7 @@ func readBytesChunk(rdCh chan<- readerData, reader io.Reader) {
 			bytes: filled,
 			err:   err,
 		}
+		return
 	}
 
 	rdCh <- readerData{
