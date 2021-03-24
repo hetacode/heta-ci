@@ -106,7 +106,7 @@ func (c *Container) ExecuteScript(scriptName string, logCh chan string) error {
 	logCh <- result
 
 	if insp.ExitCode != 0 {
-		return fmt.Errorf("Error: Process completed with exit code: %d", insp.ExitCode)
+		return fmt.Errorf("process completed with exit code: %d", insp.ExitCode)
 	}
 
 	return nil

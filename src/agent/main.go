@@ -8,22 +8,39 @@ import (
 )
 
 func main() {
+	timeoutCh := make(chan struct{})
+	defer close(timeoutCh)
 	p := NewPipelineProcessor(preparePipeline())
+	defer p.Dispose()
+
 	go p.Run()
 
-	t := time.NewTimer(time.Second * 10)
-	defer t.Stop()
+	go func() {
+		t := time.NewTimer(time.Minute * 3)
+		<-t.C
+		timeoutCh <- struct{}{}
+	}()
+
+	isRunning := true
 	for {
+		if !isRunning {
+			break
+		}
 		select {
 		case logStr, more := <-p.logChannel:
 			if !more {
-				return
+				isRunning = false
 			}
 			log.Print(logStr)
-		case <-t.C:
-			return
+		case errorStr := <-p.errorChannel:
+			log.Printf("\033[32mError: %s\033[0m", errorStr)
+			isRunning = false
+		case <-timeoutCh:
+			isRunning = false
 		}
 	}
+
+	log.Println("pipeline finished")
 }
 
 func preparePipeline() *structs.Pipeline {
