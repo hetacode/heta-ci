@@ -67,21 +67,17 @@ func (p *PipelineProcessor) executeJob(j structs.Job) error {
 	p.logChannel <- fmt.Sprintf("run '%s' job", j.DisplayName)
 
 	pwd, _ := os.Getwd()
-	pipelineTempDir := pwd + "/pipeline" // TODO: should be set up via cli parameter
+	scriptsDir := pwd + "/scripts" // TODO: should be set up via cli parameter
 
-	os.RemoveAll(pipelineTempDir)
-	if err := os.Mkdir(pipelineTempDir, os.ModePerm); err != nil {
+	os.RemoveAll(scriptsDir)
+	if err := os.Mkdir(scriptsDir, os.ModePerm); err != nil {
 		p.errorChannel <- fmt.Sprintf("create pipeline temp directory err: %s", err)
 		return err
 	}
-	scriptsDir := pipelineTempDir + "/scripts"
-	if err := os.Mkdir(scriptsDir, os.ModePerm); err != nil {
-		p.errorChannel <- fmt.Sprintf("create scripts directory err: %s", err)
-		return err
-	}
-	defer os.RemoveAll(pipelineTempDir)
 
-	c := NewContainer(j.Runner, pipelineTempDir)
+	defer os.RemoveAll(scriptsDir)
+
+	c := NewContainer(j.Runner, scriptsDir, pwd)
 	defer c.Dispose()
 
 	var lastFailedTask *structs.Task

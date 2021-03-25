@@ -23,7 +23,7 @@ type Container struct {
 }
 
 // NewContainer pull docker image, create container and run it
-func NewContainer(image string, pipelineTempDir string) *Container {
+func NewContainer(image string, scriptsDir, jobDir string) *Container {
 	ctx := context.Background()
 	client, err := client.NewClientWithOpts()
 	if err != nil {
@@ -51,14 +51,19 @@ func NewContainer(image string, pipelineTempDir string) *Container {
 			OpenStdin:    true,
 			AttachStdout: true,
 			Cmd:          []string{},
-			WorkingDir:   "/pipeline",
+			WorkingDir:   "/job",
 		},
 		&container.HostConfig{
 			Mounts: []mount.Mount{
 				{
 					Type:   mount.TypeBind,
-					Source: pipelineTempDir, // TODO: from constructor parameter
-					Target: "/pipeline",
+					Source: jobDir, // TODO: from constructor parameter
+					Target: "/job",
+				},
+				{
+					Type:   mount.TypeBind,
+					Source: scriptsDir,
+					Target: "/scripts",
 				},
 			},
 		},
@@ -88,7 +93,7 @@ func NewContainer(image string, pipelineTempDir string) *Container {
 }
 
 func (c *Container) ExecuteScript(scriptName string, logCh chan string) error {
-	scriptCommand := "/pipeline/scripts/" + scriptName
+	scriptCommand := "/scripts/" + scriptName
 
 	config := types.ExecConfig{
 		Detach:       false,
