@@ -34,27 +34,33 @@ func NewPipelineProcessor(pipeline *structs.Pipeline, pt *PipelineTriggers) *Pip
 func (p *PipelineProcessor) Run() {
 	p.logChannel <- fmt.Sprintf("run %s pipeline", p.pipeline.Name)
 
+	var lastFailedJob *structs.Job
 	for _, j := range p.pipeline.Jobs {
+		if len(j.Conditons) != 0 {
+			continue
+		}
+
 		if err := p.executeJob(j); err != nil {
-			p.haltChannel <- struct{}{}
+			lastFailedJob = &j
 			break
+		} else {
+			if err := p.executeConditionalJob(&j, true); err != nil {
+				p.haltChannel <- struct{}{}
+				break
+			}
 		}
 	}
+
+	if lastFailedJob != nil {
+		p.executeConditionalJob(lastFailedJob, false)
+	}
+	p.haltChannel <- struct{}{}
 }
 
 func (p *PipelineProcessor) Dispose() {
 	close(p.errorChannel)
 	close(p.logChannel)
 	close(p.haltChannel)
-}
-
-func (p *PipelineProcessor) parsePipelineForTriggersRegistration() {
-	for _, j := range p.pipeline.Jobs {
-		p.pipelineTriggers.RegisterJob(j)
-		for _, t := range j.Tasks {
-			p.pipelineTriggers.RegisterTask(j.ID, t)
-		}
-	}
 }
 
 func (p *PipelineProcessor) executeJob(j structs.Job) error {
@@ -107,8 +113,25 @@ func (p *PipelineProcessor) executeJob(j structs.Job) error {
 	return nil
 }
 
+func (p *PipelineProcessor) executeConditionalJob(j *structs.Job, onSuccess bool) error {
+	if j == nil {
+		return nil
+	}
+	conditionalJob := p.pipelineTriggers.GetJobFor(*j, onSuccess)
+	if conditionalJob == nil {
+		return nil
+	}
+
+	if err := p.executeJob(*conditionalJob); err != nil {
+		p.errorChannel <- fmt.Sprintf("job '%s' failed", conditionalJob.ID)
+		p.executeConditionalJob(conditionalJob, false)
+		return err
+	} else {
+		return p.executeConditionalJob(conditionalJob, true)
+	}
+}
+
 func (p *PipelineProcessor) executeConditionalTask(t *structs.Task, jobID string, c *Container, scriptsDir string, onSuccess bool) error {
-	p.logChannel <- fmt.Sprint("conditional task")
 	if t == nil {
 		return nil
 	}
@@ -160,4 +183,13 @@ func (p *PipelineProcessor) executeTask(t structs.Task, c *Container, scriptsDir
 func createScript(cmd []string) []byte {
 	oneCmd := strings.Join(cmd, "\n")
 	return []byte(oneCmd)
+}
+
+func (p *PipelineProcessor) parsePipelineForTriggersRegistration() {
+	for _, j := range p.pipeline.Jobs {
+		p.pipelineTriggers.RegisterJob(j)
+		for _, t := range j.Tasks {
+			p.pipelineTriggers.RegisterTask(j.ID, t)
+		}
+	}
 }

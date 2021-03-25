@@ -91,6 +91,27 @@ func preparePipeline() *structs.Pipeline {
 					},
 				},
 			},
+			{
+				ID:          "when_test_failed",
+				DisplayName: "Run conditionaly after test failed",
+				Runner:      "ubuntu:20.10",
+				Conditons: []structs.Conditon{
+					{
+						Type: structs.OnFailure,
+						On:   "test",
+					},
+				},
+				Tasks: []structs.Task{
+					{
+						ID:          "message",
+						DisplayName: "Message task for job 2",
+						Command: []string{
+							"apt update && apt install -y figlet",
+							"figlet \"Don't worry!\"",
+						},
+					},
+				},
+			},
 		},
 	}
 
