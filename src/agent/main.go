@@ -17,7 +17,7 @@ func main() {
 	go p.Run()
 
 	go func() {
-		t := time.NewTimer(time.Minute * 3)
+		t := time.NewTimer(time.Second * 30)
 		<-t.C
 		timeoutCh <- struct{}{}
 	}()
@@ -29,13 +29,15 @@ func main() {
 		}
 		select {
 		case logStr, more := <-p.logChannel:
+			log.Print(logStr)
 			if !more {
 				isRunning = false
 			}
-			log.Print(logStr)
-		case errorStr := <-p.errorChannel:
+		case errorStr, more := <-p.errorChannel:
 			log.Printf("\033[32mError: %s\033[0m", errorStr)
-			isRunning = false
+			if !more {
+				isRunning = false
+			}
 		case <-timeoutCh:
 			isRunning = false
 		}
@@ -81,7 +83,7 @@ func preparePipeline() *structs.Pipeline {
 							},
 						},
 						Command: []string{
-							"apt install figlet",
+							"apt update && apt install -y figlet",
 							"figlet Success",
 						},
 					},

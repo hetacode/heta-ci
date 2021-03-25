@@ -60,25 +60,63 @@ func (p *PipelineProcessor) executeJob(j structs.Job) {
 	os.RemoveAll(pipelineTempDir)
 	if err := os.Mkdir(pipelineTempDir, os.ModePerm); err != nil {
 		p.errorChannel <- fmt.Sprintf("create pipeline temp directory err: %s", err)
+		return
 	}
 	scriptsDir := pipelineTempDir + "/scripts"
 	if err := os.Mkdir(scriptsDir, os.ModePerm); err != nil {
 		p.errorChannel <- fmt.Sprintf("create scripts directory err: %s", err)
+		return
 	}
 	defer os.RemoveAll(pipelineTempDir)
 
 	c := NewContainer(j.Runner, pipelineTempDir)
 	defer c.Dispose()
 
+	var lastFailedTask *structs.Task
+	var lastSuccessTask *structs.Task
 	for _, t := range j.Tasks {
+		// Task with conditions shouldn't be run in normal flow
+		if len(t.Conditons) != 0 {
+			continue
+		}
+
 		if err := p.executeTask(t, c, scriptsDir); err != nil {
-			c.Dispose()
-			os.RemoveAll(pipelineTempDir)
+			lastFailedTask = &t
 			p.errorChannel <- err.Error()
-			// TODO: in future check if any other task should be run on fail this one
+			break
+		} else {
+			lastSuccessTask = &t
+			break
 		}
 	}
+
+	if lastFailedTask != nil {
+		p.executeConditinonalTask(lastFailedTask, j.ID, c, scriptsDir, false)
+	} else if lastSuccessTask != nil {
+		p.executeConditinonalTask(lastSuccessTask, j.ID, c, scriptsDir, true)
+	}
+
 	p.logChannel <- fmt.Sprintf("job '%s' finished", j.DisplayName)
+}
+
+func (p *PipelineProcessor) executeConditinonalTask(t *structs.Task, jobID string, c *Container, scriptsDir string, onSuccess bool) bool {
+	p.logChannel <- fmt.Sprint("conditional task")
+	if t == nil {
+		return false
+	}
+
+	conditionalTask := p.pipelineTriggers.GetTaskFor(*t, jobID, onSuccess)
+	if conditionalTask == nil {
+		return false
+	}
+
+	if err := p.executeTask(*conditionalTask, c, scriptsDir); err != nil {
+		p.errorChannel <- err.Error()
+
+		return p.executeConditinonalTask(conditionalTask, jobID, c, scriptsDir, false)
+	} else {
+		return p.executeConditinonalTask(conditionalTask, jobID, c, scriptsDir, true)
+	}
 }
 
 func (p *PipelineProcessor) executeTask(t structs.Task, c *Container, scriptsDir string) error {
