@@ -50,7 +50,7 @@ func NewContainer(image string, pipelineTempDir string) *Container {
 			Tty:          true,
 			OpenStdin:    true,
 			AttachStdout: true,
-			Cmd:          []string{"/bin/bash"},
+			Cmd:          []string{},
 			WorkingDir:   "/pipeline",
 		},
 		&container.HostConfig{
@@ -94,7 +94,7 @@ func (c *Container) ExecuteScript(scriptName string, logCh chan string) error {
 		Detach:       false,
 		Tty:          true,
 		AttachStdout: true,
-		Cmd:          []string{"/bin/bash", "-e", scriptCommand},
+		Cmd:          []string{"/bin/sh", "-e", scriptCommand},
 	}
 	containerExecCreate, _ := c.client.ContainerExecCreate(context.Background(), c.piplineContainerID, config)
 	r, _ := c.client.ContainerExecAttach(context.Background(), containerExecCreate.ID, types.ExecStartCheck{Detach: false})
