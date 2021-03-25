@@ -56,7 +56,7 @@ func NewContainer(image string, scriptsDir, pipelineDir string) *Container {
 			Tty:          true,
 			OpenStdin:    true,
 			AttachStdout: true,
-			Cmd:          []string{},
+			Cmd:          []string{"/bin/sh"},
 			WorkingDir:   JobDir,
 		},
 		&container.HostConfig{
@@ -98,6 +98,8 @@ func NewContainer(image string, scriptsDir, pipelineDir string) *Container {
 	return c
 }
 
+// ExecuteScript inside container
+// Script is lying on the host directory which is mounted via volume
 func (c *Container) ExecuteScript(scriptName string, logCh chan string) error {
 	scriptPath := ScriptsDir + "/" + scriptName
 
@@ -119,6 +121,15 @@ func (c *Container) ExecuteScript(scriptName string, logCh chan string) error {
 	if insp.ExitCode != 0 {
 		return fmt.Errorf("process completed with exit code: %d", insp.ExitCode)
 	}
+
+	return nil
+}
+
+// CreateDir inside container
+func (c *Container) CreateDir(path string) error {
+	attached, _ := c.client.ContainerAttach(context.Background(), c.piplineContainerID, types.ContainerAttachOptions{Stream: true, Stdin: true})
+	defer attached.Close()
+	attached.Conn.Write([]byte(fmt.Sprintf("mkdir %s\n", path)))
 
 	return nil
 }

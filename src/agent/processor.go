@@ -39,6 +39,8 @@ func NewPipelineProcessor(pipeline *structs.Pipeline, pt *PipelineTriggers, pipe
 func (p *PipelineProcessor) Run() {
 	p.logChannel <- fmt.Sprintf("run %s pipeline", p.pipeline.Name)
 
+	os.RemoveAll(p.pipelineHostDir)
+	os.RemoveAll(p.jobScriptHostDir)
 	if err := os.Mkdir(p.jobScriptHostDir, os.ModePerm); err != nil {
 		p.errorChannel <- fmt.Sprintf("create host scripts temp directory err: %s", err)
 		return
@@ -85,6 +87,8 @@ func (p *PipelineProcessor) executeJob(j structs.Job) error {
 
 	c := NewContainer(j.Runner, p.jobScriptHostDir, p.pipelineHostDir)
 	defer c.Dispose()
+
+	c.CreateDir(path.Join(JobDir, j.ID))
 
 	var lastFailedTask *structs.Task
 	var lastFailedTaskErr error
