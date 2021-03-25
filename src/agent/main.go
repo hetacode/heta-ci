@@ -34,10 +34,12 @@ func main() {
 				isRunning = false
 			}
 		case errorStr, more := <-p.errorChannel:
-			log.Printf("\033[32mError: %s\033[0m", errorStr)
+			log.Printf("\033[31mError: %s\033[0m", errorStr)
 			if !more {
 				isRunning = false
 			}
+		case <-p.haltChannel:
+			isRunning = false
 		case <-timeoutCh:
 			isRunning = false
 		}
