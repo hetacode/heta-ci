@@ -2,16 +2,21 @@ package main
 
 import (
 	"log"
+	"os"
 	"time"
 
 	"github.com/hetacode/heta-ci/agent/structs"
 )
 
 func main() {
+	pwd, _ := os.Getwd()
+	scriptsHostDir := pwd + "/scripts"
+	pipelineHostDir := pwd + "/pipeline"
+
 	timeoutCh := make(chan struct{})
 	defer close(timeoutCh)
 	pt := NewPipelineTriggers()
-	p := NewPipelineProcessor(preparePipeline(), pt)
+	p := NewPipelineProcessor(preparePipeline(), pt, pipelineHostDir, scriptsHostDir)
 	defer p.Dispose()
 
 	go p.Run()

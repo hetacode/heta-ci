@@ -22,8 +22,14 @@ type Container struct {
 	piplineContainerID string
 }
 
+const (
+	ScriptsDir  = "/scripts"
+	PipelineDir = "/pipeline"
+	JobDir      = "/job"
+)
+
 // NewContainer pull docker image, create container and run it
-func NewContainer(image string, scriptsDir, jobDir string) *Container {
+func NewContainer(image string, scriptsDir, pipelineDir string) *Container {
 	ctx := context.Background()
 	client, err := client.NewClientWithOpts()
 	if err != nil {
@@ -51,19 +57,19 @@ func NewContainer(image string, scriptsDir, jobDir string) *Container {
 			OpenStdin:    true,
 			AttachStdout: true,
 			Cmd:          []string{},
-			WorkingDir:   "/job",
+			WorkingDir:   JobDir,
 		},
 		&container.HostConfig{
 			Mounts: []mount.Mount{
 				{
 					Type:   mount.TypeBind,
-					Source: jobDir, // TODO: from constructor parameter
-					Target: "/job",
+					Source: pipelineDir,
+					Target: PipelineDir,
 				},
 				{
 					Type:   mount.TypeBind,
 					Source: scriptsDir,
-					Target: "/scripts",
+					Target: ScriptsDir,
 				},
 			},
 		},
@@ -93,13 +99,13 @@ func NewContainer(image string, scriptsDir, jobDir string) *Container {
 }
 
 func (c *Container) ExecuteScript(scriptName string, logCh chan string) error {
-	scriptCommand := "/scripts/" + scriptName
+	scriptPath := ScriptsDir + "/" + scriptName
 
 	config := types.ExecConfig{
 		Detach:       false,
 		Tty:          true,
 		AttachStdout: true,
-		Cmd:          []string{"/bin/sh", "-e", scriptCommand},
+		Cmd:          []string{"/bin/sh", "-e", scriptPath},
 	}
 	containerExecCreate, _ := c.client.ContainerExecCreate(context.Background(), c.piplineContainerID, config)
 	r, _ := c.client.ContainerExecAttach(context.Background(), containerExecCreate.ID, types.ExecStartCheck{Detach: false})

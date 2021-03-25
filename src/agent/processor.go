@@ -16,15 +16,20 @@ type PipelineProcessor struct {
 	logChannel       chan string
 	errorChannel     chan string
 	haltChannel      chan struct{}
+
+	pipelineHostDir  string
+	jobScriptHostDir string
 }
 
-func NewPipelineProcessor(pipeline *structs.Pipeline, pt *PipelineTriggers) *PipelineProcessor {
+func NewPipelineProcessor(pipeline *structs.Pipeline, pt *PipelineTriggers, pipelineHostDir, scriptsHostDir string) *PipelineProcessor {
 	p := &PipelineProcessor{
 		pipelineTriggers: pt,
 		pipeline:         pipeline,
 		logChannel:       make(chan string),
 		errorChannel:     make(chan string),
 		haltChannel:      make(chan struct{}),
+		pipelineHostDir:  pipelineHostDir,
+		jobScriptHostDir: scriptsHostDir,
 	}
 	p.parsePipelineForTriggersRegistration()
 
@@ -33,6 +38,15 @@ func NewPipelineProcessor(pipeline *structs.Pipeline, pt *PipelineTriggers) *Pip
 
 func (p *PipelineProcessor) Run() {
 	p.logChannel <- fmt.Sprintf("run %s pipeline", p.pipeline.Name)
+
+	if err := os.Mkdir(p.jobScriptHostDir, os.ModePerm); err != nil {
+		p.errorChannel <- fmt.Sprintf("create host scripts temp directory err: %s", err)
+		return
+	}
+	if err := os.Mkdir(p.pipelineHostDir, os.ModePerm); err != nil {
+		p.errorChannel <- fmt.Sprintf("create host pipeline temp directory err: %s", err)
+		return
+	}
 
 	var lastFailedJob *structs.Job
 	for _, j := range p.pipeline.Jobs {
@@ -61,23 +75,15 @@ func (p *PipelineProcessor) Dispose() {
 	close(p.errorChannel)
 	close(p.logChannel)
 	close(p.haltChannel)
+
+	os.RemoveAll(p.pipelineHostDir)
+	os.RemoveAll(p.jobScriptHostDir)
 }
 
 func (p *PipelineProcessor) executeJob(j structs.Job) error {
 	p.logChannel <- fmt.Sprintf("run '%s' job", j.DisplayName)
 
-	pwd, _ := os.Getwd()
-	scriptsDir := pwd + "/scripts" // TODO: should be set up via cli parameter
-
-	os.RemoveAll(scriptsDir)
-	if err := os.Mkdir(scriptsDir, os.ModePerm); err != nil {
-		p.errorChannel <- fmt.Sprintf("create pipeline temp directory err: %s", err)
-		return err
-	}
-
-	defer os.RemoveAll(scriptsDir)
-
-	c := NewContainer(j.Runner, scriptsDir, pwd)
+	c := NewContainer(j.Runner, p.jobScriptHostDir, p.pipelineHostDir)
 	defer c.Dispose()
 
 	var lastFailedTask *structs.Task
@@ -88,20 +94,20 @@ func (p *PipelineProcessor) executeJob(j structs.Job) error {
 			continue
 		}
 
-		if err := p.executeTask(t, c, scriptsDir); err != nil {
+		if err := p.executeTask(t, c, p.jobScriptHostDir); err != nil {
 			lastFailedTask = &t
 			lastFailedTaskErr = err
 			p.errorChannel <- err.Error()
 			break
 		} else {
-			if err := p.executeConditionalTask(&t, j.ID, c, scriptsDir, true); err != nil {
+			if err := p.executeConditionalTask(&t, j.ID, c, p.jobScriptHostDir, true); err != nil {
 				break
 			}
 		}
 	}
 
 	if lastFailedTask != nil {
-		p.executeConditionalTask(lastFailedTask, j.ID, c, scriptsDir, false)
+		p.executeConditionalTask(lastFailedTask, j.ID, c, p.jobScriptHostDir, false)
 		return lastFailedTaskErr
 	}
 
