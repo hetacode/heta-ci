@@ -11,25 +11,27 @@ import (
 )
 
 type PipelineProcessor struct {
-	pipelineTriggers *PipelineTriggers
-	pipeline         *structs.Pipeline
-	logChannel       chan string
-	errorChannel     chan string
-	haltChannel      chan struct{}
+	pipelineTriggers     *PipelineTriggers
+	pipelineEnvironments *PipelineEnvironments
+	pipeline             *structs.Pipeline
+	logChannel           chan string
+	errorChannel         chan string
+	haltChannel          chan struct{}
 
 	pipelineHostDir  string
 	jobScriptHostDir string
 }
 
-func NewPipelineProcessor(pipeline *structs.Pipeline, pt *PipelineTriggers, pipelineHostDir, scriptsHostDir string) *PipelineProcessor {
+func NewPipelineProcessor(pipeline *structs.Pipeline, pt *PipelineTriggers, pe *PipelineEnvironments, pipelineHostDir, scriptsHostDir string) *PipelineProcessor {
 	p := &PipelineProcessor{
-		pipelineTriggers: pt,
-		pipeline:         pipeline,
-		logChannel:       make(chan string),
-		errorChannel:     make(chan string),
-		haltChannel:      make(chan struct{}),
-		pipelineHostDir:  pipelineHostDir,
-		jobScriptHostDir: scriptsHostDir,
+		pipelineTriggers:     pt,
+		pipelineEnvironments: pe,
+		pipeline:             pipeline,
+		logChannel:           make(chan string),
+		errorChannel:         make(chan string),
+		haltChannel:          make(chan struct{}),
+		pipelineHostDir:      pipelineHostDir,
+		jobScriptHostDir:     scriptsHostDir,
 	}
 	p.parsePipelineForTriggersRegistration()
 
@@ -85,6 +87,8 @@ func (p *PipelineProcessor) Dispose() {
 func (p *PipelineProcessor) executeJob(j structs.Job) error {
 	p.logChannel <- fmt.Sprintf("run '%s' job", j.DisplayName)
 
+	p.pipelineEnvironments.SetCurrent(p.pipeline, &j)
+	// TODO: set env variables to container
 	c := NewContainer(j.Runner, p.jobScriptHostDir, p.pipelineHostDir)
 	defer c.Dispose()
 
@@ -160,6 +164,9 @@ func (p *PipelineProcessor) executeConditionalTask(t *structs.Task, jobID string
 
 func (p *PipelineProcessor) executeTask(t structs.Task, c *Container, scriptsDir string) error {
 	p.logChannel <- fmt.Sprintf("run '%s' task", t.DisplayName)
+
+	// TODO: set env variables to current container action
+	p.pipelineEnvironments.SetCurrenTask(&t)
 
 	// Prepare script file
 	uid, _ := uuid.GenerateUUID()

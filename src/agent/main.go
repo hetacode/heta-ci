@@ -15,8 +15,9 @@ func main() {
 
 	timeoutCh := make(chan struct{})
 	defer close(timeoutCh)
+	pe := NewPipelineEnvironments(ScriptsDir, JobDir, PipelineDir)
 	pt := NewPipelineTriggers()
-	p := NewPipelineProcessor(preparePipeline(), pt, pipelineHostDir, scriptsHostDir)
+	p := NewPipelineProcessor(preparePipeline(), pt, pe, pipelineHostDir, scriptsHostDir)
 	defer p.Dispose()
 
 	go p.Run()
@@ -68,6 +69,16 @@ func preparePipeline() *structs.Pipeline {
 						Command: []string{
 							"echo Start",
 							"cd /etc && ls -al",
+							"echo End",
+						},
+					},
+					{
+						ID:          "correct",
+						DisplayName: "Correct script",
+						Command: []string{
+							"echo Start",
+							"echo job artifacts dir: $AGENT_JOB_ARTIFACTS_DIR",
+							"echo scripts dir: $AGENT_SCRIPTS_DIR",
 							"echo End",
 						},
 					},
