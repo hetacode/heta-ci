@@ -1,6 +1,10 @@
 package main
 
-import "github.com/hetacode/heta-ci/agent/structs"
+import (
+	"fmt"
+
+	"github.com/hetacode/heta-ci/agent/structs"
+)
 
 const (
 	AgentScriptsDirEnvName           = "AGENT_SCRIPTS_DIR"
@@ -47,4 +51,15 @@ func (p *PipelineEnvironments) GetAllEnvNames() []string {
 	}
 
 	return envs
+}
+
+func (p *PipelineEnvironments) GetEnvironments() []string {
+	env := make([]string, len(p.Env))
+
+	counter := 0
+	for k, v := range p.Env {
+		env[counter] = fmt.Sprintf("%s=%s", k, v)
+		counter++
+	}
+	return env
 }

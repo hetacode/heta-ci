@@ -100,13 +100,14 @@ func NewContainer(image string, scriptsDir, pipelineDir string) *Container {
 
 // ExecuteScript inside container
 // Script is lying on the host directory which is mounted via volume
-func (c *Container) ExecuteScript(scriptName string, logCh chan string) error {
+func (c *Container) ExecuteScript(scriptName string, logCh chan string, environments []string) error {
 	scriptPath := ScriptsDir + "/" + scriptName
 
 	config := types.ExecConfig{
 		Detach:       false,
 		Tty:          true,
 		AttachStdout: true,
+		Env:          environments,
 		Cmd:          []string{"/bin/sh", "-e", scriptPath},
 	}
 	containerExecCreate, _ := c.client.ContainerExecCreate(context.Background(), c.piplineContainerID, config)

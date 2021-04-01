@@ -88,7 +88,7 @@ func (p *PipelineProcessor) executeJob(j structs.Job) error {
 	p.logChannel <- fmt.Sprintf("run '%s' job", j.DisplayName)
 
 	p.pipelineEnvironments.SetCurrent(p.pipeline, &j)
-	// TODO: set env variables to container
+
 	c := NewContainer(j.Runner, p.jobScriptHostDir, p.pipelineHostDir)
 	defer c.Dispose()
 
@@ -165,7 +165,6 @@ func (p *PipelineProcessor) executeConditionalTask(t *structs.Task, jobID string
 func (p *PipelineProcessor) executeTask(t structs.Task, c *Container, scriptsDir string) error {
 	p.logChannel <- fmt.Sprintf("run '%s' task", t.DisplayName)
 
-	// TODO: set env variables to current container action
 	p.pipelineEnvironments.SetCurrenTask(&t)
 
 	// Prepare script file
@@ -185,7 +184,7 @@ func (p *PipelineProcessor) executeTask(t structs.Task, c *Container, scriptsDir
 	f.Close()
 
 	// Execute script inside container
-	if err := c.ExecuteScript(filename, p.logChannel); err != nil {
+	if err := c.ExecuteScript(filename, p.logChannel, p.pipelineEnvironments.GetEnvironments()); err != nil {
 		return err
 	}
 
