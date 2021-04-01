@@ -15,4 +15,8 @@ require (
 	github.com/opencontainers/image-spec v1.0.1 // indirect
 	github.com/sirupsen/logrus v1.8.1 // indirect
 	google.golang.org/grpc v1.36.0 // indirect
+	github.com/hetacode/heta-ci/structs v0.0.1
 )
+
+replace github.com/hetacode/heta-ci/structs => ../structs
+

@@ -5,7 +5,7 @@ import (
 	"os"
 	"time"
 
-	"github.com/hetacode/heta-ci/agent/structs"
+	"github.com/hetacode/heta-ci/structs"
 )
 
 func main() {
