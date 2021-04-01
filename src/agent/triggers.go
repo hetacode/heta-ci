@@ -3,7 +3,7 @@ package main
 import (
 	"fmt"
 
-	"github.com/hetacode/heta-ci/agent/structs"
+	"github.com/hetacode/heta-ci/structs"
 )
 
 type PipelineTriggers struct {

@@ -7,7 +7,7 @@ import (
 	"strings"
 
 	"github.com/hashicorp/go-uuid"
-	"github.com/hetacode/heta-ci/agent/structs"
+	"github.com/hetacode/heta-ci/structs"
 )
 
 type PipelineProcessor struct {
