@@ -2,16 +2,22 @@ package main
 
 import (
 	"log"
+	"os"
 	"time"
 
 	"github.com/hetacode/heta-ci/agent/structs"
 )
 
 func main() {
+	pwd, _ := os.Getwd()
+	scriptsHostDir := pwd + "/scripts"
+	pipelineHostDir := pwd + "/pipeline"
+
 	timeoutCh := make(chan struct{})
 	defer close(timeoutCh)
+	pe := NewPipelineEnvironments(ScriptsDir, JobDir, PipelineDir)
 	pt := NewPipelineTriggers()
-	p := NewPipelineProcessor(preparePipeline(), pt)
+	p := NewPipelineProcessor(preparePipeline(), pt, pe, pipelineHostDir, scriptsHostDir)
 	defer p.Dispose()
 
 	go p.Run()
@@ -66,81 +72,91 @@ func preparePipeline() *structs.Pipeline {
 							"echo End",
 						},
 					},
-				},
-			},
-			{
-				ID:          "test_busybox",
-				DisplayName: "Busybox runner",
-				Runner:      "busybox",
-				Tasks: []structs.Task{
 					{
 						ID:          "correct",
 						DisplayName: "Correct script",
 						Command: []string{
 							"echo Start",
-							"cd /etc && ls -al",
+							"echo job artifacts dir: $AGENT_JOB_ARTIFACTS_DIR",
+							"echo scripts dir: $AGENT_SCRIPTS_DIR",
 							"echo End",
 						},
 					},
 				},
 			},
-			{
-				ID:          "test_ubuntu",
-				DisplayName: "Ubuntu runner ",
-				Runner:      "ubuntu:20.04",
-				Tasks: []structs.Task{
-					{
-						ID:          "correct",
-						DisplayName: "Correct script",
-						Command: []string{
-							"echo Start",
-							"cd /etc && ls -al",
-							"echo End",
-						},
-					},
-				},
-			},
-			{
-				ID:          "test_arch",
-				DisplayName: "Arch runner ",
-				Runner:      "archlinux",
-				Tasks: []structs.Task{
-					{
-						ID:          "correct",
-						DisplayName: "Correct script",
-						Command: []string{
-							"echo Start",
-							"cd /etc && ls -al",
-							"echo End",
-						},
-					},
-				},
+			// {
+			// 	ID:          "test_busybox",
+			// 	DisplayName: "Busybox runner",
+			// 	Runner:      "busybox",
+			// 	Tasks: []structs.Task{
+			// 		{
+			// 			ID:          "correct",
+			// 			DisplayName: "Correct script",
+			// 			Command: []string{
+			// 				"echo Start",
+			// 				"cd /etc && ls -al",
+			// 				"echo End",
+			// 			},
+			// 		},
+			// 	},
+			// },
+			// {
+			// 	ID:          "test_ubuntu",
+			// 	DisplayName: "Ubuntu runner ",
+			// 	Runner:      "ubuntu:20.04",
+			// 	Tasks: []structs.Task{
+			// 		{
+			// 			ID:          "correct",
+			// 			DisplayName: "Correct script",
+			// 			Command: []string{
+			// 				"echo Start",
+			// 				"cd /etc && ls -al",
+			// 				"echo End",
+			// 			},
+			// 		},
+			// 	},
+			// },
+			// {
+			// 	ID:          "test_arch",
+			// 	DisplayName: "Arch runner ",
+			// 	Runner:      "archlinux",
+			// 	Tasks: []structs.Task{
+			// 		{
+			// 			ID:          "correct",
+			// 			DisplayName: "Correct script",
+			// 			Command: []string{
+			// 				"echo Start",
+			// 				"cd /etc && ls -al",
+			// 				"echo End",
+			// 			},
+			// 		},
+			// 	},
 
-				// {
-				// 	ID:          "fail",
-				// 	DisplayName: "Failed script",
-				// 	Command: []string{
-				// 		"echo Start",
-				// 		"cd /etc && lt -al",
-				// 		"echo End",
-				// 	},
-				// },
-				// {
-				// 	ID:          "on_success_correct_task",
-				// 	DisplayName: "Launch when 'test' task finish successfuly",
-				// 	Conditons: []structs.Conditon{
-				// 		{
-				// 			Type: structs.OnSuccess,
-				// 			On:   "correct",
-				// 		},
-				// 	},
-				// 	Command: []string{
-				// 		"apt update && apt install -y figlet",
-				// 		"figlet Success",
-				// 	},
-				// },
-				// },
-			},
+			// {
+			// 	ID:          "fail",
+			// 	DisplayName: "Failed script",
+			// 	Command: []string{
+			// 		"echo Start",
+			// 		"cd /etc && lt -al",
+			// 		"echo End",
+			// 	},
+			// },
+			// {
+			// 	ID:          "on_success_correct_task",
+			// 	DisplayName: "Launch when 'test' task finish successfuly",
+			// 	Conditons: []structs.Conditon{
+			// 		{
+			// 			Type: structs.OnSuccess,
+			// 			On:   "correct",
+			// 		},
+			// 	},
+			// 	Command: []string{
+			// 		"apt update && apt install -y figlet",
+			// 		"figlet Success",
+			// 	},
+			// },
+			// },
+			// },
 			// {
 			// 	ID:          "when_test_failed",
 			// 	DisplayName: "Run conditionaly after test failed",

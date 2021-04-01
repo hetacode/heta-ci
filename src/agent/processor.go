@@ -11,20 +11,27 @@ import (
 )
 
 type PipelineProcessor struct {
-	pipelineTriggers *PipelineTriggers
-	pipeline         *structs.Pipeline
-	logChannel       chan string
-	errorChannel     chan string
-	haltChannel      chan struct{}
+	pipelineTriggers     *PipelineTriggers
+	pipelineEnvironments *PipelineEnvironments
+	pipeline             *structs.Pipeline
+	logChannel           chan string
+	errorChannel         chan string
+	haltChannel          chan struct{}
+
+	pipelineHostDir  string
+	jobScriptHostDir string
 }
 
-func NewPipelineProcessor(pipeline *structs.Pipeline, pt *PipelineTriggers) *PipelineProcessor {
+func NewPipelineProcessor(pipeline *structs.Pipeline, pt *PipelineTriggers, pe *PipelineEnvironments, pipelineHostDir, scriptsHostDir string) *PipelineProcessor {
 	p := &PipelineProcessor{
-		pipelineTriggers: pt,
-		pipeline:         pipeline,
-		logChannel:       make(chan string),
-		errorChannel:     make(chan string),
-		haltChannel:      make(chan struct{}),
+		pipelineTriggers:     pt,
+		pipelineEnvironments: pe,
+		pipeline:             pipeline,
+		logChannel:           make(chan string),
+		errorChannel:         make(chan string),
+		haltChannel:          make(chan struct{}),
+		pipelineHostDir:      pipelineHostDir,
+		jobScriptHostDir:     scriptsHostDir,
 	}
 	p.parsePipelineForTriggersRegistration()
 
@@ -33,6 +40,17 @@ func NewPipelineProcessor(pipeline *structs.Pipeline, pt *PipelineTriggers) *Pip
 
 func (p *PipelineProcessor) Run() {
 	p.logChannel <- fmt.Sprintf("run %s pipeline", p.pipeline.Name)
+
+	os.RemoveAll(p.pipelineHostDir)
+	os.RemoveAll(p.jobScriptHostDir)
+	if err := os.Mkdir(p.jobScriptHostDir, os.ModePerm); err != nil {
+		p.errorChannel <- fmt.Sprintf("create host scripts temp directory err: %s", err)
+		return
+	}
+	if err := os.Mkdir(p.pipelineHostDir, os.ModePerm); err != nil {
+		p.errorChannel <- fmt.Sprintf("create host pipeline temp directory err: %s", err)
+		return
+	}
 
 	var lastFailedJob *structs.Job
 	for _, j := range p.pipeline.Jobs {
@@ -61,28 +79,20 @@ func (p *PipelineProcessor) Dispose() {
 	close(p.errorChannel)
 	close(p.logChannel)
 	close(p.haltChannel)
+
+	os.RemoveAll(p.pipelineHostDir)
+	os.RemoveAll(p.jobScriptHostDir)
 }
 
 func (p *PipelineProcessor) executeJob(j structs.Job) error {
 	p.logChannel <- fmt.Sprintf("run '%s' job", j.DisplayName)
 
-	pwd, _ := os.Getwd()
-	pipelineTempDir := pwd + "/pipeline" // TODO: should be set up via cli parameter
+	p.pipelineEnvironments.SetCurrent(p.pipeline, &j)
 
-	os.RemoveAll(pipelineTempDir)
-	if err := os.Mkdir(pipelineTempDir, os.ModePerm); err != nil {
-		p.errorChannel <- fmt.Sprintf("create pipeline temp directory err: %s", err)
-		return err
-	}
-	scriptsDir := pipelineTempDir + "/scripts"
-	if err := os.Mkdir(scriptsDir, os.ModePerm); err != nil {
-		p.errorChannel <- fmt.Sprintf("create scripts directory err: %s", err)
-		return err
-	}
-	defer os.RemoveAll(pipelineTempDir)
-
-	c := NewContainer(j.Runner, pipelineTempDir)
+	c := NewContainer(j.Runner, p.jobScriptHostDir, p.pipelineHostDir)
 	defer c.Dispose()
+
+	c.CreateDir(path.Join(JobDir, j.ID))
 
 	var lastFailedTask *structs.Task
 	var lastFailedTaskErr error
@@ -92,20 +102,20 @@ func (p *PipelineProcessor) executeJob(j structs.Job) error {
 			continue
 		}
 
-		if err := p.executeTask(t, c, scriptsDir); err != nil {
+		if err := p.executeTask(t, c, p.jobScriptHostDir); err != nil {
 			lastFailedTask = &t
 			lastFailedTaskErr = err
 			p.errorChannel <- err.Error()
 			break
 		} else {
-			if err := p.executeConditionalTask(&t, j.ID, c, scriptsDir, true); err != nil {
+			if err := p.executeConditionalTask(&t, j.ID, c, p.jobScriptHostDir, true); err != nil {
 				break
 			}
 		}
 	}
 
 	if lastFailedTask != nil {
-		p.executeConditionalTask(lastFailedTask, j.ID, c, scriptsDir, false)
+		p.executeConditionalTask(lastFailedTask, j.ID, c, p.jobScriptHostDir, false)
 		return lastFailedTaskErr
 	}
 
@@ -155,6 +165,8 @@ func (p *PipelineProcessor) executeConditionalTask(t *structs.Task, jobID string
 func (p *PipelineProcessor) executeTask(t structs.Task, c *Container, scriptsDir string) error {
 	p.logChannel <- fmt.Sprintf("run '%s' task", t.DisplayName)
 
+	p.pipelineEnvironments.SetCurrenTask(&t)
+
 	// Prepare script file
 	uid, _ := uuid.GenerateUUID()
 	filename := uid + ".sh"
@@ -172,7 +184,7 @@ func (p *PipelineProcessor) executeTask(t structs.Task, c *Container, scriptsDir
 	f.Close()
 
 	// Execute script inside container
-	if err := c.ExecuteScript(filename, p.logChannel); err != nil {
+	if err := c.ExecuteScript(filename, p.logChannel, p.pipelineEnvironments.GetEnvironments()); err != nil {
 		return err
 	}
 
