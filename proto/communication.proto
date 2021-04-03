@@ -1,0 +1,20 @@
+syntax = "proto3";
+
+option go_package = "github.com/hetacode/heta-ci;proto";
+package communication;
+
+message MessageFromAgent {
+    string id = 1;
+    string hostname = 2;
+    string type = 3;
+    string payload = 4;
+}
+
+message MessageFromController {
+    string type = 3;
+    string payload = 4;
+}
+
+service Communication {
+    rpc MessagingService(stream MessageFromAgent) returns (stream MessageFromController);
+}

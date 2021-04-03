@@ -2,15 +2,31 @@ package main
 
 import (
 	"fmt"
+	"log"
+	"net"
 
+	proto "github.com/hetacode/heta-ci/proto"
 	"github.com/hetacode/heta-ci/structs"
+	"google.golang.org/grpc"
 )
 
 func main() {
 	c := NewController()
 	c.AddPipeline(preparePipeline())
 
+	lis, err := net.Listen("tcp", ":5000")
+	if err != nil {
+		log.Panic(err)
+	}
+	srv := grpc.NewServer()
+	cs := &CommunicationServer{}
+	proto.RegisterCommunicationServer(srv, cs)
+
 	fmt.Print("controller")
+	err = srv.Serve(lis)
+	if err != nil {
+		log.Panic(err)
+	}
 }
 
 func preparePipeline() *structs.Pipeline {
