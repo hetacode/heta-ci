@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	"log"
 	"net"
 
@@ -11,6 +10,8 @@ import (
 )
 
 func main() {
+	logCh := make(chan string)
+	errLogCh := make(chan string)
 	c := NewController()
 	c.AddPipeline(preparePipeline())
 
@@ -19,10 +20,21 @@ func main() {
 		log.Panic(err)
 	}
 	srv := grpc.NewServer()
-	cs := &CommunicationServer{}
+	cs := NewCommunicationServer(logCh, errLogCh)
 	proto.RegisterCommunicationServer(srv, cs)
 
-	fmt.Print("controller")
+	go func() {
+		for {
+			select {
+			case logStr := <-logCh:
+				log.Printf("\033[97m%s\033[0m", logStr)
+			case errLogStr := <-errLogCh:
+				log.Printf("\033[31m%s\033[0m", errLogStr)
+			}
+
+		}
+	}()
+
 	err = srv.Serve(lis)
 	if err != nil {
 		log.Panic(err)
