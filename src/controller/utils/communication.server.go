@@ -5,20 +5,25 @@ import (
 
 	"github.com/hashicorp/go-uuid"
 	goeh "github.com/hetacode/go-eh"
+	"github.com/hetacode/heta-ci/events"
 	evcontroller "github.com/hetacode/heta-ci/events/controller"
 	proto "github.com/hetacode/heta-ci/proto"
 )
 
 type CommunicationServer struct {
 	proto.UnimplementedCommunicationServer
-	AgentErrorChan chan AgentError
-	Agents         []*Agent
+	EventsHandlerManager *goeh.EventsHandlerManager
+	AgentErrorChan       chan AgentError
+	Agents               []*Agent
+	eventsMapper         *goeh.EventsMapper
 }
 
-func NewCommunicationServer() *CommunicationServer {
+func NewCommunicationServer(ehm *goeh.EventsHandlerManager) *CommunicationServer {
 	errCh := make(chan AgentError)
 	c := &CommunicationServer{
-		AgentErrorChan: errCh,
+		AgentErrorChan:       errCh,
+		EventsHandlerManager: ehm,
+		eventsMapper:         events.NewEventsMapper(),
 	}
 
 	return c
@@ -26,8 +31,8 @@ func NewCommunicationServer() *CommunicationServer {
 
 func (s *CommunicationServer) MessagingService(client proto.Communication_MessagingServiceServer) error {
 
-	a := NewAgent(client, s.AgentErrorChan)
-	go a.ReceivingMessages()
+	a := NewAgent(client, s.AgentErrorChan, s.EventsHandlerManager)
+	go a.ReceivingMessages(s.eventsMapper)
 
 	s.Agents = append(s.Agents, a)
 

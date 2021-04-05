@@ -9,12 +9,12 @@ import (
 )
 
 type LogMessageEventHandler struct {
-	controller *utils.Controller
+	Controller *utils.Controller
 }
 
 func (e *LogMessageEventHandler) Handle(event goeh.Event) {
 	ev := event.(*agent.LogMessageEvent)
-	b, ok := e.controller.Builds[ev.BuildID]
+	b, ok := e.Controller.Builds[ev.BuildID]
 	if !ok {
 		log.Printf("LogMessageEvent | cannot find build id: %s", ev.BuildID)
 		return
