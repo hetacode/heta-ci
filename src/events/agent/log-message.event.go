@@ -12,7 +12,7 @@ const (
 type LogMessageEvent struct {
 	*goeh.EventData
 	AgentID string  `json:"agent_id"`
-	Type    LogType `json:"log_type"`
+	LogType LogType `json:"log_type"`
 	BuildID string  `json:"build_id"`
 	JobID   string  `json:"job_id"`
 	Message string  `json:"message"`

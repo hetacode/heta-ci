@@ -1,10 +1,10 @@
-package main
+package utils
 
 import "github.com/hetacode/heta-ci/structs"
 
 type Controller struct {
+	Builds    map[string]*PipelineBuild
 	pipelines []*structs.Pipeline
-	workers   []*PipelineWorker
 	agents    []*Agent // list of free agents
 }
 
@@ -20,7 +20,8 @@ func (c *Controller) AddPipeline(p *structs.Pipeline) {
 func (c *Controller) Execute() {
 	// TODO: a correct way - it should iterate through git repositories
 	for _, p := range c.pipelines {
-		w := NewPipelineWorker(p)
+		w := NewPipelineBuild(p)
+		c.Builds[w.ID] = w
 		go w.Run()
 	}
 }

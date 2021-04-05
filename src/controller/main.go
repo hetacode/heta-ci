@@ -4,15 +4,20 @@ import (
 	"log"
 	"net"
 
+	"github.com/hetacode/heta-ci/controller/utils"
 	proto "github.com/hetacode/heta-ci/proto"
 	"github.com/hetacode/heta-ci/structs"
 	"google.golang.org/grpc"
 )
 
+// TODO:
+// + 1. prepare events for both side - like Controller -> Agent: AssignedAgentID (just after connect to controller)
+// - 2. prepare whole stuff for event handling - eventsmapper, eventshandlers, connect events with eventshandlers
+// - 3. added grpc client on the agent side
+
 func main() {
-	logCh := make(chan string)
-	errLogCh := make(chan string)
-	c := NewController()
+
+	c := utils.NewController()
 	c.AddPipeline(preparePipeline())
 
 	lis, err := net.Listen("tcp", ":5000")
@@ -20,20 +25,8 @@ func main() {
 		log.Panic(err)
 	}
 	srv := grpc.NewServer()
-	cs := NewCommunicationServer(logCh, errLogCh)
+	cs := utils.NewCommunicationServer()
 	proto.RegisterCommunicationServer(srv, cs)
-
-	go func() {
-		for {
-			select {
-			case logStr := <-logCh:
-				log.Printf("\033[97m%s\033[0m", logStr)
-			case errLogStr := <-errLogCh:
-				log.Printf("\033[31m%s\033[0m", errLogStr)
-			}
-
-		}
-	}()
 
 	err = srv.Serve(lis)
 	if err != nil {

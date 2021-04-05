@@ -1,6 +1,8 @@
-package main
+package utils
 
 import (
+	"log"
+
 	"github.com/hashicorp/go-uuid"
 	"github.com/hetacode/heta-ci/structs"
 )
@@ -12,25 +14,35 @@ const (
 	PipelineStatusWorking                = "working"
 )
 
-type PipelineWorker struct {
+type PipelineBuild struct {
 	ID         string
 	CommitHash string
 	Status     PipelineStatus
 	Pipeline   *structs.Pipeline
 	Agent      *Agent
+
+	LogChan    chan string
+	ErrLogChan chan string
 }
 
-func NewPipelineWorker(p *structs.Pipeline) *PipelineWorker {
+func NewPipelineBuild(p *structs.Pipeline) *PipelineBuild {
+	logCh := make(chan string)
+	errLogCh := make(chan string)
+
 	uid, _ := uuid.GenerateUUID()
-	w := &PipelineWorker{
-		ID:       uid,
-		Pipeline: p,
+	w := &PipelineBuild{
+		ID:         uid,
+		Pipeline:   p,
+		LogChan:    logCh,
+		ErrLogChan: errLogCh,
 	}
+
+	go w.logs()
 
 	return w
 }
 
-func (w *PipelineWorker) Run() {
+func (w *PipelineBuild) Run() {
 	w.Status = PipelineStatusWorking
 
 	// TODO:
@@ -42,4 +54,16 @@ func (w *PipelineWorker) Run() {
 	// 6. if job return any artifacts, save them to the pipeline dir via exposed api
 	// 7. jobs and inner tasks push logs via rtm channel
 	// 8. on finish pipeline (or any error) all resources should be cleaned up (like pipeline directory)
+}
+
+func (b *PipelineBuild) logs() {
+	for {
+		select {
+		case logStr := <-b.LogChan:
+			log.Printf("\033[97m%s\033[0m", logStr)
+		case errLogStr := <-b.ErrLogChan:
+			log.Printf("\033[31m%s\033[0m", errLogStr)
+		}
+
+	}
 }
