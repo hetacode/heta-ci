@@ -1,11 +1,14 @@
 package main
 
 import (
+	"context"
 	"log"
 	"os"
 	"time"
 
+	"github.com/hetacode/heta-ci/proto"
 	"github.com/hetacode/heta-ci/structs"
+	"google.golang.org/grpc"
 )
 
 func main() {
@@ -27,6 +30,24 @@ func main() {
 		<-t.C
 		timeoutCh <- struct{}{}
 	}()
+
+	// TODO: init after receive confirmation message from controller
+	config := NewConfig("__TEMP__")
+
+	con, err := grpc.Dial(":5000", grpc.WithInsecure())
+	if err != nil {
+		log.Fatalf("agent | cannot connect to the controller | err: %s", err)
+	}
+	defer con.Close()
+
+	client := proto.NewCommunicationClient(con)
+	stream, err := client.MessagingService(context.Background())
+	if err != nil {
+		log.Fatalf("agent | failed to call messaging service | err: %+v", err)
+	}
+
+	ms := NewMessagingServiceHandler(config, stream)
+	go ms.ReceivingMessages()
 
 	isRunning := true
 	for {

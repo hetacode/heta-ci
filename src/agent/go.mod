@@ -11,12 +11,16 @@ require (
 	github.com/docker/go-units v0.4.0 // indirect
 	github.com/gogo/protobuf v1.3.2 // indirect
 	github.com/hashicorp/go-uuid v1.0.2 // indirect
+	github.com/hetacode/go-eh v0.0.2 // indirect
+	github.com/hetacode/heta-ci/proto v0.0.1
+	github.com/hetacode/heta-ci/structs v0.0.1
 	github.com/opencontainers/go-digest v1.0.0 // indirect
 	github.com/opencontainers/image-spec v1.0.1 // indirect
 	github.com/sirupsen/logrus v1.8.1 // indirect
-	google.golang.org/grpc v1.36.0 // indirect
-	github.com/hetacode/heta-ci/structs v0.0.1
+	google.golang.org/grpc v1.37.0 // indirect
 )
 
-replace github.com/hetacode/heta-ci/structs => ../structs
-
+replace (
+	github.com/hetacode/heta-ci/proto => ../proto-gen
+	github.com/hetacode/heta-ci/structs => ../structs
+)
