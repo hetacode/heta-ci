@@ -42,6 +42,7 @@ func main() {
 func registerEventHandlers(c *utils.Controller) *goeh.EventsHandlerManager {
 	ehm := goeh.NewEventsHandlerManager()
 	ehm.Register(new(agent.LogMessageEvent), &eventhandlers.LogMessageEventHandler{Controller: c})
+	ehm.Register(new(agent.JobFinishedEvent), &eventhandlers.JobFinishedEventHandler{Controller: c})
 
 	return ehm
 }
