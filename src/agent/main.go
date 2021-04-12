@@ -75,13 +75,12 @@ func main() {
 		}
 	}
 
-	// TODO: events handler manager
-
 	log.Println("pipeline finished")
 }
 
 func registerEventHandlers(a *app.App) {
 	a.EventsHandlerManager.Register(new(controller.AgentConfirmedEvent), &eventhandlers.AgentConfirmedEventHandler{App: a})
+	a.EventsHandlerManager.Register(new(controller.StartJobCommand), &eventhandlers.StartJobCommandHandler{App: a})
 }
 
 func preparePipeline() *structs.Pipeline {
