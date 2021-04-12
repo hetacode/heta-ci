@@ -3,20 +3,18 @@ package main
 import (
 	"log"
 	"net"
+	"net/http"
 
+	"github.com/gorilla/mux"
 	goeh "github.com/hetacode/go-eh"
 	"github.com/hetacode/heta-ci/controller/eventhandlers"
+	"github.com/hetacode/heta-ci/controller/handlers"
 	"github.com/hetacode/heta-ci/controller/utils"
 	"github.com/hetacode/heta-ci/events/agent"
 	proto "github.com/hetacode/heta-ci/proto"
 	"github.com/hetacode/heta-ci/structs"
 	"google.golang.org/grpc"
 )
-
-// TODO:
-// + 1. prepare events for both side - like Controller -> Agent: AssignedAgentID (just after connect to controller)
-// + 2. prepare whole stuff for event handling - eventsmapper, eventshandlers, connect events with eventshandlers
-// - 3. added grpc client on the agent side
 
 func main() {
 
@@ -25,6 +23,7 @@ func main() {
 
 	c.AddPipeline(preparePipeline())
 
+	go initRestApi()
 	lis, err := net.Listen("tcp", ":5000")
 	if err != nil {
 		log.Panic(err)
@@ -37,6 +36,17 @@ func main() {
 	if err != nil {
 		log.Panic(err)
 	}
+}
+
+func initRestApi() {
+	h := &handlers.Handlers{}
+	r := mux.NewRouter()
+	r.HandleFunc("/download/{category}/{buildId}", h.DownloadFileHandler)
+	srv := &http.Server{
+		Handler: r,
+		Addr:    "0.0.0.0:5080",
+	}
+	srv.ListenAndServe()
 }
 
 func registerEventHandlers(c *utils.Controller) *goeh.EventsHandlerManager {
