@@ -42,6 +42,7 @@ func initRestApi() {
 	h := &handlers.Handlers{}
 	r := mux.NewRouter()
 	r.HandleFunc("/download/{category}/{buildId}", h.DownloadFileHandler)
+	r.HandleFunc("/upload/{buildId}/{jobId}", h.UploadArtifactsHandler)
 	srv := &http.Server{
 		Handler: r,
 		Addr:    "0.0.0.0:5080",

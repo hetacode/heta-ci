@@ -30,7 +30,7 @@ func (h *Handlers) DownloadFileHandler(w http.ResponseWriter, r *http.Request) {
 	zw := zip.NewWriter(&buf)
 	zc, _ := zw.Create("test.txt")
 	zc.Write(b)
-	zw.Close()
+	defer zw.Close()
 
 	w.Header().Add("Content-Type", "application/zip")
 	w.Header().Add("Content-Disposition", fmt.Sprintf("attachment; filename=%s_%s.zip", category, buildID))
