@@ -6,6 +6,9 @@ import (
 	"os"
 	"time"
 
+	"github.com/hetacode/heta-ci/agent/app"
+	"github.com/hetacode/heta-ci/agent/eventhandlers"
+	"github.com/hetacode/heta-ci/events/controller"
 	"github.com/hetacode/heta-ci/proto"
 	"github.com/hetacode/heta-ci/structs"
 	"google.golang.org/grpc"
@@ -15,6 +18,8 @@ func main() {
 	pwd, _ := os.Getwd()
 	scriptsHostDir := pwd + "/scripts"
 	pipelineHostDir := pwd + "/pipeline"
+
+	a := app.NewApp()
 
 	timeoutCh := make(chan struct{})
 	defer close(timeoutCh)
@@ -32,8 +37,6 @@ func main() {
 	}()
 
 	// TODO: init after receive confirmation message from controller
-	config := NewConfig("__TEMP__")
-
 	con, err := grpc.Dial(":5000", grpc.WithInsecure())
 	if err != nil {
 		log.Fatalf("agent | cannot connect to the controller | err: %s", err)
@@ -46,7 +49,7 @@ func main() {
 		log.Fatalf("agent | failed to call messaging service | err: %+v", err)
 	}
 
-	ms := NewMessagingServiceHandler(config, stream)
+	ms := NewMessagingServiceHandler(a, stream)
 	go ms.ReceivingMessages()
 
 	isRunning := true
@@ -72,7 +75,13 @@ func main() {
 		}
 	}
 
+	// TODO: events handler manager
+
 	log.Println("pipeline finished")
+}
+
+func registerEventHandlers(a *app.App) {
+	a.EventsHandlerManager.Register(new(controller.AgentConfirmedEvent), &eventhandlers.AgentConfirmedEventHandler{App: a})
 }
 
 func preparePipeline() *structs.Pipeline {

@@ -18,9 +18,11 @@ require (
 	github.com/opencontainers/image-spec v1.0.1 // indirect
 	github.com/sirupsen/logrus v1.8.1 // indirect
 	google.golang.org/grpc v1.37.0 // indirect
+	github.com/hetacode/heta-ci/events v0.0.1
 )
 
 replace (
 	github.com/hetacode/heta-ci/proto => ../proto-gen
 	github.com/hetacode/heta-ci/structs => ../structs
+	github.com/hetacode/heta-ci/events => ../events
 )

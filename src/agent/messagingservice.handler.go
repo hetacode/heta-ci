@@ -4,17 +4,19 @@ import (
 	"log"
 
 	goeh "github.com/hetacode/go-eh"
+	"github.com/hetacode/heta-ci/agent/app"
 	"github.com/hetacode/heta-ci/proto"
 )
 
 type MessagingServiceHandler struct {
-	config *Config
-	stream proto.Communication_MessagingServiceClient
+	app                  *app.App
+	stream               proto.Communication_MessagingServiceClient
+	eventsHandlerManager *goeh.EventsHandlerManager
 }
 
-func NewMessagingServiceHandler(config *Config, stream proto.Communication_MessagingServiceClient) *MessagingServiceHandler {
+func NewMessagingServiceHandler(app *app.App, stream proto.Communication_MessagingServiceClient) *MessagingServiceHandler {
 	ms := &MessagingServiceHandler{
-		config: config,
+		app:    app,
 		stream: stream,
 	}
 
@@ -30,14 +32,20 @@ func (s *MessagingServiceHandler) ReceivingMessages() {
 
 		// TODO:
 		// call events handler manager
-		log.Fatalf("Unimplemnted ReceivingMessages: %+v", msg)
+
+		ev, err := s.app.Config.EventsMapper.Resolve(msg.Payload)
+		if err != nil {
+			log.Printf("agent | failed resolve message type: %s | err: %s", msg.Payload, err)
+			return
+		}
+		s.eventsHandlerManager.Execute(ev)
 	}
 }
 
 func (s *MessagingServiceHandler) SendMessage(e goeh.Event) {
 	mes := &proto.MessageFromAgent{
-		Id:       s.config.AgentID,
-		Hostname: s.config.Hostname,
+		Id:       s.app.Config.AgentID,
+		Hostname: s.app.Config.Hostname,
 		Type:     e.GetType(),
 		Payload:  e.GetPayload(),
 	}
