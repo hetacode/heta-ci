@@ -62,6 +62,11 @@ func (w *PipelineBuild) Run() {
 	// 8. on finish pipeline (or any error) all resources should be cleaned up (like pipeline directory)
 
 	for _, j := range w.Pipeline.Jobs {
+		// Job with conditions should run in special way
+		if len(j.Conditons) != 0 {
+			continue
+		}
+
 		w.askAgentChan <- w.ID
 		agent := <-w.AgentResponseChan
 
@@ -70,12 +75,12 @@ func (w *PipelineBuild) Run() {
 			EventData:  &goeh.EventData{ID: oid},
 			BuildID:    w.ID,
 			PipelineID: w.Pipeline.Name,
-			JobID:      j.ID,
+			Job:        j,
 		}
 
 		agent.SendMessage(ev)
-		// TODO:
-		// stop execute next iteration until previous job finish
+		// Another jobs will execute in JobFinishedEventHandler
+		return
 	}
 }
 
