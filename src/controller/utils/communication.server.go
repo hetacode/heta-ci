@@ -42,6 +42,7 @@ func (s *CommunicationServer) MessagingService(client proto.Communication_Messag
 		AgentID:   a.ID,
 	}
 	a.SendMessage(ev)
+	log.Printf("agent %s connected", euid)
 
 	return nil
 }

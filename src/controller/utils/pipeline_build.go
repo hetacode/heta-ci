@@ -4,6 +4,8 @@ import (
 	"log"
 
 	"github.com/hashicorp/go-uuid"
+	goeh "github.com/hetacode/go-eh"
+	"github.com/hetacode/heta-ci/events/controller"
 	"github.com/hetacode/heta-ci/structs"
 )
 
@@ -21,20 +23,24 @@ type PipelineBuild struct {
 	Pipeline   *structs.Pipeline
 	Agent      *Agent
 
-	LogChan    chan string
-	ErrLogChan chan string
+	LogChan           chan string
+	ErrLogChan        chan string
+	AgentResponseChan chan *Agent
+	askAgentChan      chan string
 }
 
-func NewPipelineBuild(p *structs.Pipeline) *PipelineBuild {
+func NewPipelineBuild(p *structs.Pipeline, askAgentCh chan string) *PipelineBuild {
 	logCh := make(chan string)
 	errLogCh := make(chan string)
 
 	uid, _ := uuid.GenerateUUID()
 	w := &PipelineBuild{
-		ID:         uid,
-		Pipeline:   p,
-		LogChan:    logCh,
-		ErrLogChan: errLogCh,
+		ID:                uid,
+		Pipeline:          p,
+		LogChan:           logCh,
+		ErrLogChan:        errLogCh,
+		AgentResponseChan: make(chan *Agent),
+		askAgentChan:      askAgentCh,
 	}
 
 	go w.logs()
@@ -54,6 +60,23 @@ func (w *PipelineBuild) Run() {
 	// 6. if job return any artifacts, save them to the pipeline dir via exposed api
 	// 7. jobs and inner tasks push logs via rtm channel
 	// 8. on finish pipeline (or any error) all resources should be cleaned up (like pipeline directory)
+
+	for _, j := range w.Pipeline.Jobs {
+		w.askAgentChan <- w.ID
+		agent := <-w.AgentResponseChan
+
+		oid, _ := uuid.GenerateUUID()
+		ev := &controller.StartJobCommand{
+			EventData:  &goeh.EventData{ID: oid},
+			BuildID:    w.ID,
+			PipelineID: w.Pipeline.Name,
+			JobID:      j.ID,
+		}
+
+		agent.SendMessage(ev)
+		// TODO:
+		// stop execute next iteration until previous job finish
+	}
 }
 
 func (b *PipelineBuild) logs() {
