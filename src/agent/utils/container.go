@@ -7,6 +7,7 @@ import (
 	"log"
 	"time"
 
+	"github.com/hetacode/heta-ci/agent/errors"
 	utilsuio "github.com/hetacode/heta-ci/agent/utils/io"
 
 	"github.com/docker/docker/api/types"
@@ -119,7 +120,7 @@ func (c *Container) ExecuteScript(scriptName string, environments []string) (str
 	result := string(l)
 
 	if insp.ExitCode != 0 {
-		return result, fmt.Errorf("process completed with exit code: %d", insp.ExitCode)
+		return result, &errors.ContainerError{ErrorCode: insp.ExitCode, Message: fmt.Sprintf("process completed with exit code: %d", insp.ExitCode)}
 	}
 
 	return result, nil

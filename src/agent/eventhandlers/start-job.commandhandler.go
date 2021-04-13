@@ -9,6 +9,7 @@ import (
 	"github.com/hashicorp/go-uuid"
 	goeh "github.com/hetacode/go-eh"
 	"github.com/hetacode/heta-ci/agent/app"
+	"github.com/hetacode/heta-ci/agent/errors"
 	"github.com/hetacode/heta-ci/agent/utils"
 	"github.com/hetacode/heta-ci/events/agent"
 	"github.com/hetacode/heta-ci/events/controller"
@@ -73,8 +74,12 @@ func (h *StartJobCommandHandler) Handle(event goeh.Event) {
 
 	if lastFailedTask != nil {
 		h.executeConditionalTask(lastFailedTask, j.ID, c, h.App.ScriptsHostDir, false)
-		// TODO: error should contain error code as separate field
-		h.returnError(1, ev.BuildID, j.ID, lastFailedTaskErr.Error())
+
+		if te, ok := lastFailedTaskErr.(*errors.ContainerError); ok {
+			h.returnError(te.ErrorCode, ev.BuildID, j.ID, lastFailedTaskErr.Error())
+		} else {
+			h.returnError(1, ev.BuildID, j.ID, lastFailedTaskErr.Error())
+		}
 		return
 	}
 
