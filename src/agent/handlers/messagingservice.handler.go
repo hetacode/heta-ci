@@ -14,10 +14,11 @@ type MessagingServiceHandler struct {
 	eventsHandlerManager *goeh.EventsHandlerManager
 }
 
-func NewMessagingServiceHandler(config *utils.Config, stream proto.Communication_MessagingServiceClient) *MessagingServiceHandler {
+func NewMessagingServiceHandler(config *utils.Config, eventsHandlerManager *goeh.EventsHandlerManager, stream proto.Communication_MessagingServiceClient) *MessagingServiceHandler {
 	ms := &MessagingServiceHandler{
-		config: config,
-		stream: stream,
+		config:               config,
+		stream:               stream,
+		eventsHandlerManager: eventsHandlerManager,
 	}
 
 	return ms
@@ -32,7 +33,7 @@ func (s *MessagingServiceHandler) ReceivingMessages() {
 
 		ev, err := s.config.EventsMapper.Resolve(msg.Payload)
 		if err != nil {
-			log.Printf("agent | failed resolve message type: %s | err: %s", msg.Payload, err)
+			log.Printf("agent | failed resolve message type: %+v | err: %s", msg, err)
 			return
 		}
 		s.eventsHandlerManager.Execute(ev)
@@ -40,6 +41,7 @@ func (s *MessagingServiceHandler) ReceivingMessages() {
 }
 
 func (s *MessagingServiceHandler) SendMessage(e goeh.Event) {
+	e.SavePayload(e)
 	mes := &proto.MessageFromAgent{
 		Id:       s.config.AgentID,
 		Hostname: s.config.Hostname,

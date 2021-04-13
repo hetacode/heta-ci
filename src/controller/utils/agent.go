@@ -64,10 +64,12 @@ func (a *Agent) ReceivingMessages(em *goeh.EventsMapper) {
 }
 
 func (a *Agent) SendMessage(event goeh.Event) {
+	event.SavePayload(event)
 	send := &proto.MessageFromController{
 		Type:    event.GetType(),
 		Payload: event.GetPayload(),
 	}
+
 	err := a.client.Send(send)
 	if err != nil {
 		a.errorChan <- NewAgentError(a.ID, fmt.Sprintf("agent: %s send err: %s", a.ID, err))

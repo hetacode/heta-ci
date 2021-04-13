@@ -20,6 +20,7 @@ func NewApp() *App {
 	pwd, _ := os.Getwd()
 
 	return &App{
+		Config:               utils.NewConfig(),
 		EventsHandlerManager: goeh.NewEventsHandlerManager(),
 		ScriptsHostDir:       pwd + "/scripts",
 		ArtifactsHostDir:     pwd + "/artifacts",

@@ -3,7 +3,7 @@ package main
 import (
 	"context"
 	"log"
-	"time"
+	"os"
 
 	"github.com/hetacode/heta-ci/agent/app"
 	"github.com/hetacode/heta-ci/agent/eventhandlers"
@@ -14,23 +14,9 @@ import (
 )
 
 func main() {
-
+	wait := make(chan bool)
 	a := app.NewApp()
-
-	timeoutCh := make(chan struct{})
-	defer close(timeoutCh)
-	// pe := NewPipelineEnvironments(ScriptsDir, JobDir, PipelineDir)
-	// pt := NewPipelineTriggers()
-	// p := NewPipelineProcessor(preparePipeline(), pt, pe, pipelineHostDir, scriptsHostDir)
-	// defer p.Dispose()
-	//
-	// go p.Run()
-
-	go func() {
-		t := time.NewTimer(time.Second * 30)
-		<-t.C
-		timeoutCh <- struct{}{}
-	}()
+	registerEventHandlers(a)
 
 	con, err := grpc.Dial(":5000", grpc.WithInsecure())
 	if err != nil {
@@ -44,11 +30,14 @@ func main() {
 		log.Fatalf("agent | failed to call messaging service | err: %+v", err)
 	}
 
-	ms := handlers.NewMessagingServiceHandler(a.Config, stream)
+	ms := handlers.NewMessagingServiceHandler(a.Config, a.EventsHandlerManager, stream)
 	a.MessagingService = ms
 	go ms.ReceivingMessages()
 
-	log.Println("pipeline finished")
+	h, _ := os.Hostname()
+	log.Printf("agent %s is running", h)
+
+	<-wait
 }
 
 func registerEventHandlers(a *app.App) {

@@ -41,21 +41,18 @@ func (s *CommunicationServer) MessagingService(client proto.Communication_Messag
 		EventData: &goeh.EventData{ID: euid},
 		AgentID:   a.ID,
 	}
-	a.SendMessage(ev)
-	log.Printf("agent %s connected", euid)
+	go a.SendMessage(ev)
+	log.Printf("agent %s connected", a.ID)
+
+	err := <-s.AgentErrorChan
+	log.Printf("\033[31m%s\033[0m", err.Error())
+
+	for i, a := range s.Agents {
+		if a.ID == err.ID {
+			s.Agents = append(s.Agents[:i], s.Agents[i+1:]...)
+			break
+		}
+	}
 
 	return nil
-}
-
-func (s *CommunicationServer) AgentErrorsReceiver() {
-	for err := range s.AgentErrorChan {
-		for i, a := range s.Agents {
-			if a.ID == err.ID {
-				s.Agents = append(s.Agents[:i], s.Agents[i+1:]...)
-				break
-			}
-		}
-
-		log.Printf("\033[31m%s\033[0m", err.Error())
-	}
 }

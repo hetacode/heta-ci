@@ -11,8 +11,8 @@ message MessageFromAgent {
 }
 
 message MessageFromController {
-    string type = 3;
-    string payload = 4;
+    string type = 1;
+    string payload = 2;
 }
 
 service Communication {
