@@ -19,6 +19,7 @@ func (e *JobFinishedEventHandler) Handle(event goeh.Event) {
 		log.Printf("JobFinishedEvent | cannot find build id: %s", ev.BuildID)
 		return
 	}
+	e.Controller.ReturnAgentCh <- b.Agent
 
 	// TODO:
 	// to implement jobs flow - from agent

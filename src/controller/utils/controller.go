@@ -12,9 +12,9 @@ type Controller struct {
 	pipelines []*structs.Pipeline
 	agents    []*Agent // list of free agents
 
+	ReturnAgentCh         chan *Agent            // after finished job agent back via channel
 	buildsAgentResponseCh map[string]chan *Agent // channels collection for each build - via these channels are sending free agents to execute jobs
 	askAgentCh            chan string            // build id as parameter
-	returnAgentCh         chan *Agent            // after finished job agent back via channel
 	addAgentCh            chan *Agent
 	removeAgentCh         chan *Agent
 }
@@ -26,7 +26,7 @@ func NewController(addAgentCh, removeAgentCh chan *Agent) *Controller {
 		agents:                make([]*Agent, 0),
 		buildsAgentResponseCh: make(map[string]chan *Agent),
 		askAgentCh:            make(chan string),
-		returnAgentCh:         make(chan *Agent),
+		ReturnAgentCh:         make(chan *Agent),
 		addAgentCh:            addAgentCh,
 		removeAgentCh:         removeAgentCh,
 	}
@@ -93,7 +93,7 @@ func (c *Controller) agentsManager() {
 			}
 			log.Printf("removed agent %s", agent.ID)
 			wg.Done()
-		case agent := <-c.returnAgentCh:
+		case agent := <-c.ReturnAgentCh:
 			wg.Wait()
 			wg.Add(1)
 			c.agents = append(c.agents, agent)

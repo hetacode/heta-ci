@@ -69,6 +69,7 @@ func (w *PipelineBuild) Run() {
 
 		w.askAgentChan <- w.ID
 		agent := <-w.AgentResponseChan
+		w.Agent = agent
 
 		oid, _ := uuid.GenerateUUID()
 		ev := &controller.StartJobCommand{
