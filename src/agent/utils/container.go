@@ -1,4 +1,4 @@
-package main
+package utils
 
 import (
 	"context"
@@ -23,13 +23,13 @@ type Container struct {
 }
 
 const (
-	ScriptsDir  = "/scripts"
-	PipelineDir = "/pipeline"
-	JobDir      = "/job"
+	ScriptsDir   = "/scripts"
+	ArtifactsDir = "/artifacts"
+	JobDir       = "/job"
 )
 
 // NewContainer pull docker image, create container and run it
-func NewContainer(image string, scriptsDir, pipelineDir string) *Container {
+func NewContainer(image string, scriptsAgentDir, artifactsAgentDir string) *Container {
 	ctx := context.Background()
 	client, err := client.NewClientWithOpts()
 	if err != nil {
@@ -63,12 +63,12 @@ func NewContainer(image string, scriptsDir, pipelineDir string) *Container {
 			Mounts: []mount.Mount{
 				{
 					Type:   mount.TypeBind,
-					Source: pipelineDir,
-					Target: PipelineDir,
+					Source: artifactsAgentDir,
+					Target: ArtifactsDir,
 				},
 				{
 					Type:   mount.TypeBind,
-					Source: scriptsDir,
+					Source: scriptsAgentDir,
 					Target: ScriptsDir,
 				},
 			},

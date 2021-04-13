@@ -7,11 +7,12 @@ import (
 	"strings"
 
 	"github.com/hashicorp/go-uuid"
+	"github.com/hetacode/heta-ci/agent/utils"
 	"github.com/hetacode/heta-ci/structs"
 )
 
 type PipelineProcessor struct {
-	pipelineTriggers     *PipelineTriggers
+	pipelineTriggers     *utils.PipelineTriggers
 	pipelineEnvironments *PipelineEnvironments
 	pipeline             *structs.Pipeline
 	logChannel           chan string
@@ -22,7 +23,7 @@ type PipelineProcessor struct {
 	jobScriptHostDir string
 }
 
-func NewPipelineProcessor(pipeline *structs.Pipeline, pt *PipelineTriggers, pe *PipelineEnvironments, pipelineHostDir, scriptsHostDir string) *PipelineProcessor {
+func NewPipelineProcessor(pipeline *structs.Pipeline, pt *utils.PipelineTriggers, pe *PipelineEnvironments, pipelineHostDir, scriptsHostDir string) *PipelineProcessor {
 	p := &PipelineProcessor{
 		pipelineTriggers:     pt,
 		pipelineEnvironments: pe,
@@ -52,27 +53,27 @@ func (p *PipelineProcessor) Run() {
 		return
 	}
 
-	var lastFailedJob *structs.Job
-	for _, j := range p.pipeline.Jobs {
-		if len(j.Conditons) != 0 {
-			continue
-		}
+	// var lastFailedJob *structs.Job
+	// for _, j := range p.pipeline.Jobs {
+	// 	if len(j.Conditons) != 0 {
+	// 		continue
+	// 	}
 
-		if err := p.executeJob(j); err != nil {
-			lastFailedJob = &j
-			break
-		} else {
-			if err := p.executeConditionalJob(&j, true); err != nil {
-				p.haltChannel <- struct{}{}
-				break
-			}
-		}
-	}
+	// 	if err := p.executeJob(j); err != nil {
+	// 		lastFailedJob = &j
+	// 		break
+	// 	} else {
+	// 		if err := p.executeConditionalJob(&j, true); err != nil {
+	// 			p.haltChannel <- struct{}{}
+	// 			break
+	// 		}
+	// 	}
+	// }
 
-	if lastFailedJob != nil {
-		p.executeConditionalJob(lastFailedJob, false)
-	}
-	p.haltChannel <- struct{}{}
+	// if lastFailedJob != nil {
+	// 	p.executeConditionalJob(lastFailedJob, false)
+	// }
+	// p.haltChannel <- struct{}{}
 }
 
 func (p *PipelineProcessor) Dispose() {
@@ -84,85 +85,85 @@ func (p *PipelineProcessor) Dispose() {
 	os.RemoveAll(p.jobScriptHostDir)
 }
 
-func (p *PipelineProcessor) executeJob(j structs.Job) error {
-	p.logChannel <- fmt.Sprintf("run '%s' job", j.DisplayName)
+// func (p *PipelineProcessor) executeJob(j structs.Job) error {
+// 	p.logChannel <- fmt.Sprintf("run '%s' job", j.DisplayName)
 
-	p.pipelineEnvironments.SetCurrent(p.pipeline, &j)
+// 	p.pipelineEnvironments.SetCurrent(p.pipeline, &j)
 
-	c := NewContainer(j.Runner, p.jobScriptHostDir, p.pipelineHostDir)
-	defer c.Dispose()
+// 	c := NewContainer(j.Runner, p.jobScriptHostDir, p.pipelineHostDir)
+// 	defer c.Dispose()
 
-	c.CreateDir(path.Join(JobDir, j.ID))
+// 	c.CreateDir(path.Join(JobDir, j.ID))
 
-	var lastFailedTask *structs.Task
-	var lastFailedTaskErr error
-	for _, t := range j.Tasks {
-		// Task with conditions shouldn't be run in normal flow
-		if len(t.Conditons) != 0 {
-			continue
-		}
+// 	var lastFailedTask *structs.Task
+// 	var lastFailedTaskErr error
+// 	for _, t := range j.Tasks {
+// 		// Task with conditions shouldn't be run in normal flow
+// 		if len(t.Conditons) != 0 {
+// 			continue
+// 		}
 
-		if err := p.executeTask(t, c, p.jobScriptHostDir); err != nil {
-			lastFailedTask = &t
-			lastFailedTaskErr = err
-			p.errorChannel <- err.Error()
-			break
-		} else {
-			if err := p.executeConditionalTask(&t, j.ID, c, p.jobScriptHostDir, true); err != nil {
-				break
-			}
-		}
-	}
+// 		if err := p.executeTask(t, c, p.jobScriptHostDir); err != nil {
+// 			lastFailedTask = &t
+// 			lastFailedTaskErr = err
+// 			p.errorChannel <- err.Error()
+// 			break
+// 		} else {
+// 			if err := p.executeConditionalTask(&t, j.ID, c, p.jobScriptHostDir, true); err != nil {
+// 				break
+// 			}
+// 		}
+// 	}
 
-	if lastFailedTask != nil {
-		p.executeConditionalTask(lastFailedTask, j.ID, c, p.jobScriptHostDir, false)
-		return lastFailedTaskErr
-	}
+// 	if lastFailedTask != nil {
+// 		p.executeConditionalTask(lastFailedTask, j.ID, c, p.jobScriptHostDir, false)
+// 		return lastFailedTaskErr
+// 	}
 
-	p.logChannel <- fmt.Sprintf("job '%s' finished", j.DisplayName)
-	return nil
-}
+// 	p.logChannel <- fmt.Sprintf("job '%s' finished", j.DisplayName)
+// 	return nil
+// }
 
-func (p *PipelineProcessor) executeConditionalJob(j *structs.Job, onSuccess bool) error {
-	if j == nil {
-		return nil
-	}
-	conditionalJob := p.pipelineTriggers.GetJobFor(*j, onSuccess)
-	if conditionalJob == nil {
-		return nil
-	}
+// func (p *PipelineProcessor) executeConditionalJob(j *structs.Job, onSuccess bool) error {
+// 	if j == nil {
+// 		return nil
+// 	}
+// 	conditionalJob := p.pipelineTriggers.GetJobFor(*j, onSuccess)
+// 	if conditionalJob == nil {
+// 		return nil
+// 	}
 
-	if err := p.executeJob(*conditionalJob); err != nil {
-		p.errorChannel <- fmt.Sprintf("job '%s' failed", conditionalJob.ID)
-		p.executeConditionalJob(conditionalJob, false)
-		return err
-	} else {
-		return p.executeConditionalJob(conditionalJob, true)
-	}
-}
+// 	if err := p.executeJob(*conditionalJob); err != nil {
+// 		p.errorChannel <- fmt.Sprintf("job '%s' failed", conditionalJob.ID)
+// 		p.executeConditionalJob(conditionalJob, false)
+// 		return err
+// 	} else {
+// 		return p.executeConditionalJob(conditionalJob, true)
+// 	}
+// }
 
-func (p *PipelineProcessor) executeConditionalTask(t *structs.Task, jobID string, c *Container, scriptsDir string, onSuccess bool) error {
-	if t == nil {
-		return nil
-	}
+// func (p *PipelineProcessor) executeConditionalTask(t *structs.Task, jobID string, c *Container, scriptsDir string, onSuccess bool) error {
+// 	if t == nil {
+// 		return nil
+// 	}
 
-	conditionalTask := p.pipelineTriggers.GetTaskFor(*t, jobID, onSuccess)
-	if conditionalTask == nil {
-		return nil
-	}
+// 	conditionalTask := p.pipelineTriggers.GetTaskFor(*t, jobID, onSuccess)
+// 	if conditionalTask == nil {
+// 		return nil
+// 	}
 
-	if err := p.executeTask(*conditionalTask, c, scriptsDir); err != nil {
-		p.errorChannel <- err.Error()
+// 	if err := p.executeTask(*conditionalTask, c, scriptsDir); err != nil {
+// 		p.errorChannel <- err.Error()
 
-		p.executeConditionalTask(conditionalTask, jobID, c, scriptsDir, false)
-		return err
+// 		p.executeConditionalTask(conditionalTask, jobID, c, scriptsDir, false)
+// 		return err
 
-	} else {
-		return p.executeConditionalTask(conditionalTask, jobID, c, scriptsDir, true)
-	}
-}
+// 	} else {
+// 		return p.executeConditionalTask(conditionalTask, jobID, c, scriptsDir, true)
+// 	}
+// }
 
-func (p *PipelineProcessor) executeTask(t structs.Task, c *Container, scriptsDir string) error {
+func (p *PipelineProcessor) executeTask(t structs.Task, c *utils.Container, scriptsDir string) error {
 	p.logChannel <- fmt.Sprintf("run '%s' task", t.DisplayName)
 
 	p.pipelineEnvironments.SetCurrenTask(&t)
