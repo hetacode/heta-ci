@@ -32,7 +32,6 @@ func main() {
 		timeoutCh <- struct{}{}
 	}()
 
-	// TODO: init after receive confirmation message from controller
 	con, err := grpc.Dial(":5000", grpc.WithInsecure())
 	if err != nil {
 		log.Fatalf("agent | cannot connect to the controller | err: %s", err)
@@ -48,29 +47,6 @@ func main() {
 	ms := handlers.NewMessagingServiceHandler(a.Config, stream)
 	a.MessagingService = ms
 	go ms.ReceivingMessages()
-
-	// isRunning := true
-	// for {
-	// 	if !isRunning {
-	// 		break
-	// 	}
-	// 	select {
-	// 	case logStr, more := <-p.logChannel:
-	// 		log.Print(logStr)
-	// 		if !more {
-	// 			isRunning = false
-	// 		}
-	// 	case errorStr, more := <-p.errorChannel:
-	// 		log.Printf("\033[31mError: %s\033[0m", errorStr)
-	// 		if !more {
-	// 			isRunning = false
-	// 		}
-	// 	case <-p.haltChannel:
-	// 		isRunning = false
-	// 	case <-timeoutCh:
-	// 		isRunning = false
-	// 	}
-	// }
 
 	log.Println("pipeline finished")
 }

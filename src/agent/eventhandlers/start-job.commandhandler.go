@@ -16,22 +16,34 @@ import (
 )
 
 type StartJobCommandHandler struct {
-	App              *app.App
-	pipelineTriggers *utils.PipelineTriggers
-	buildID          string
+	App                  *app.App
+	pipelineEnvironments *utils.PipelineEnvironments
+	pipelineTriggers     *utils.PipelineTriggers
+	buildID              string
 }
 
 func (h *StartJobCommandHandler) Handle(event goeh.Event) {
 	h.pipelineTriggers = utils.NewPipelineTriggers()
+	h.pipelineEnvironments = utils.NewPipelineEnvironments(h.App.ScriptsHostDir, h.App.ArtifactsHostDir)
+
 	ev := event.(*controller.StartJobCommand)
 	j := ev.Job
 	h.sendInfoLog(ev.BuildID, j.ID, fmt.Sprintf("run '%s' job", j.DisplayName))
 
 	h.pipelineTriggers.RegisterTasksTriggers(j)
 	h.buildID = ev.BuildID
-	// h.pipelineEnvironments.SetCurrent(p.pipeline, &j)
+	if err := os.Mkdir(h.App.ScriptsHostDir, os.ModePerm); err != nil {
+		h.returnError(1, ev.BuildID, j.ID, fmt.Sprintf("create scripts temp directory err: %s", err))
+		return
+	}
+	if err := os.Mkdir(h.App.ArtifactsHostDir, os.ModePerm); err != nil {
+		h.returnError(1, ev.BuildID, j.ID, fmt.Sprintf("create artifacts temp directory err: %s", err))
 
-	c := utils.NewContainer(j.Runner, h.App.ArtifactsHostDir, h.App.ArtifactsHostDir)
+		return
+	}
+	h.pipelineEnvironments.SetCurrent(ev.PipelineID, j.DisplayName)
+
+	c := utils.NewContainer(j.Runner, h.App.ScriptsHostDir, h.App.ArtifactsHostDir)
 	defer c.Dispose()
 
 	c.CreateDir(path.Join(utils.JobDir, j.ID))
@@ -89,7 +101,7 @@ func (p *StartJobCommandHandler) executeConditionalTask(t *structs.Task, jobID s
 func (p *StartJobCommandHandler) executeTask(t *structs.Task, jobID string, c *utils.Container, scriptsDir string) error {
 	p.sendInfoLog(p.buildID, jobID, fmt.Sprintf("run '%s' task", t.DisplayName))
 
-	// p.pipelineEnvironments.SetCurrenTask(&t)
+	p.pipelineEnvironments.SetCurrenTask(t)
 
 	// Prepare script file
 	uid, _ := uuid.GenerateUUID()
@@ -108,9 +120,11 @@ func (p *StartJobCommandHandler) executeTask(t *structs.Task, jobID string, c *u
 	f.Close()
 
 	// Execute script inside container
-	// if err := c.ExecuteScript(filename, p.logChannel, p.pipelineEnvironments.GetEnvironments()); err != nil {
-	// 	return err
-	// }
+	msg, err := c.ExecuteScript(filename, p.pipelineEnvironments.GetEnvironments())
+	p.sendInfoLog(p.buildID, jobID, msg)
+	if err != nil {
+		return err
+	}
 
 	p.sendInfoLog(p.buildID, jobID, fmt.Sprintf("task '%s' done", t.DisplayName))
 	return nil

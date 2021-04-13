@@ -100,7 +100,7 @@ func NewContainer(image string, scriptsAgentDir, artifactsAgentDir string) *Cont
 
 // ExecuteScript inside container
 // Script is lying on the host directory which is mounted via volume
-func (c *Container) ExecuteScript(scriptName string, logCh chan string, environments []string) error {
+func (c *Container) ExecuteScript(scriptName string, environments []string) (string, error) {
 	scriptPath := ScriptsDir + "/" + scriptName
 
 	config := types.ExecConfig{
@@ -117,13 +117,12 @@ func (c *Container) ExecuteScript(scriptName string, logCh chan string, environm
 	insp, _ := c.client.ContainerExecInspect(context.Background(), containerExecCreate.ID)
 
 	result := string(l)
-	logCh <- result
 
 	if insp.ExitCode != 0 {
-		return fmt.Errorf("process completed with exit code: %d", insp.ExitCode)
+		return result, fmt.Errorf("process completed with exit code: %d", insp.ExitCode)
 	}
 
-	return nil
+	return result, nil
 }
 
 // CreateDir inside container
