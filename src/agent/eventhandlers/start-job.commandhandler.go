@@ -32,6 +32,9 @@ func (h *StartJobCommandHandler) Handle(event goeh.Event) {
 
 	h.pipelineTriggers.RegisterTasksTriggers(j)
 	h.buildID = ev.BuildID
+
+	os.RemoveAll(h.App.ScriptsHostDir)
+	os.RemoveAll(h.App.ArtifactsHostDir)
 	if err := os.Mkdir(h.App.ScriptsHostDir, os.ModePerm); err != nil {
 		h.returnError(1, ev.BuildID, j.ID, fmt.Sprintf("create scripts temp directory err: %s", err))
 		return

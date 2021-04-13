@@ -2,7 +2,6 @@ package utils
 
 import (
 	"fmt"
-	"log"
 
 	"github.com/hashicorp/go-uuid"
 	goeh "github.com/hetacode/go-eh"
@@ -51,8 +50,6 @@ func (a *Agent) ReceivingMessages(em *goeh.EventsMapper) {
 			a.errorChan <- NewAgentError(a.ID, fmt.Sprintf("agent: %s receive err: %s", a.ID, err))
 			return
 		}
-
-		log.Printf("agent: %s msg: %s", a.ID, msg.Type)
 
 		ev, err := em.Resolve(msg.Payload)
 		if err != nil {

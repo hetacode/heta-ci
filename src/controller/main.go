@@ -77,8 +77,8 @@ func preparePipeline() *structs.Pipeline {
 				Runner:      "alpine",
 				Tasks: []structs.Task{
 					{
-						ID:          "correct",
-						DisplayName: "Correct script",
+						ID:          "correct_ls",
+						DisplayName: "Correct script - ls dir",
 						Command: []string{
 							"echo Start",
 							"cd /etc && ls -al",
@@ -86,8 +86,8 @@ func preparePipeline() *structs.Pipeline {
 						},
 					},
 					{
-						ID:          "correct",
-						DisplayName: "Correct script",
+						ID:          "correct_env",
+						DisplayName: "Correct script - env",
 						Command: []string{
 							"echo Start",
 							"echo job artifacts dir: $AGENT_JOB_ARTIFACTS_DIR",
