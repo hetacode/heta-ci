@@ -52,7 +52,7 @@ func (a *Agent) ReceivingMessages(em *goeh.EventsMapper) {
 			return
 		}
 
-		log.Printf("agent: %s msg: %s", a.ID, msg.String())
+		log.Printf("agent: %s msg: %s", a.ID, msg.Type)
 
 		ev, err := em.Resolve(msg.Payload)
 		if err != nil {

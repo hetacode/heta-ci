@@ -4,6 +4,7 @@ import (
 	"log"
 	"net"
 	"net/http"
+	"time"
 
 	"github.com/gorilla/mux"
 	goeh "github.com/hetacode/go-eh"
@@ -17,8 +18,10 @@ import (
 )
 
 func main() {
+	addAgentCh := make(chan *utils.Agent)
+	removeAgentCh := make(chan *utils.Agent)
 
-	c := utils.NewController()
+	c := utils.NewController(addAgentCh, removeAgentCh)
 	ehm := registerEventHandlers(c)
 
 	c.AddPipeline(preparePipeline())
@@ -29,8 +32,14 @@ func main() {
 		log.Panic(err)
 	}
 	srv := grpc.NewServer()
-	cs := utils.NewCommunicationServer(ehm)
+	cs := utils.NewCommunicationServer(ehm, addAgentCh, removeAgentCh)
 	proto.RegisterCommunicationServer(srv, cs)
+
+	// TEST PIPELINE EXECUTIONS
+	go func() {
+		time.Sleep(10 * time.Second)
+		c.Execute()
+	}()
 
 	err = srv.Serve(lis)
 	if err != nil {

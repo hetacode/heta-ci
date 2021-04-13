@@ -22,5 +22,10 @@ func (e *JobFinishedEventHandler) Handle(event goeh.Event) {
 
 	// TODO:
 	// to implement jobs flow - from agent
-	log.Fatalf("Unimplemented JobFinishedEventHandler %+v", b)
+	switch ev.Reason {
+	case agent.ErrorJobFinishReason:
+		b.ErrLogChan <- ev.Message
+	case agent.CompleteJobFinishReason:
+		b.LogChan <- ev.Message
+	}
 }
