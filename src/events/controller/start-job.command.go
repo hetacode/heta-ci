@@ -9,9 +9,10 @@ import (
 // Full job data - like  code, job steps - should downloaded via rest api
 type StartJobCommand struct {
 	*goeh.EventData
-	BuildID    string      `json:"build_id"`
-	PipelineID string      `json:"pipeline_id"`
-	Job        structs.Job `json:"job"`
+	BuildID       string      `json:"build_id"`
+	PipelineID    string      `json:"pipeline_id"`
+	Job           structs.Job `json:"job"`
+	IsConditional bool        `json:"is_conditional"`
 }
 
 func (e *StartJobCommand) GetType() string {

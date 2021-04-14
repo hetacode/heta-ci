@@ -21,12 +21,50 @@ func (e *JobFinishedEventHandler) Handle(event goeh.Event) {
 	}
 	e.Controller.ReturnAgentCh <- b.Agent
 
-	// TODO:
-	// to implement jobs flow - from agent
 	switch ev.Reason {
 	case agent.ErrorJobFinishReason:
 		b.ErrLogChan <- ev.Message
+
+		nextJob := b.Triggers.GetJobFor(ev.JobID, false)
+		if nextJob == nil {
+			return
+		}
+		b.StartJob(nextJob, true)
+		return
 	case agent.CompleteJobFinishReason:
 		b.LogChan <- ev.Message
+
+		nextJob := b.Triggers.GetJobFor(ev.JobID, true)
+		if nextJob != nil {
+			b.StartJob(nextJob, true)
+			return
+		}
+		// Go to looking for another job
+	}
+
+	if ev.WasConditionalJob {
+		// If finished job was executed in conditional flow
+		// we shouldn't never go to normal iterating path
+		// It exactly means end of pipeline!
+		return
+	}
+
+	start := false
+	for _, j := range b.Pipeline.Jobs {
+		if ev.JobID == j.ID && !start {
+			start = true
+			continue
+		}
+
+		if !start {
+			continue
+		}
+
+		if len(j.Conditons) != 0 {
+			continue
+		}
+
+		b.StartJob(&j, false)
+		return
 	}
 }

@@ -2,6 +2,7 @@ package eventhandlers
 
 import (
 	"fmt"
+	"log"
 	"os"
 	"path"
 	"strings"
@@ -37,11 +38,11 @@ func (h *StartJobCommandHandler) Handle(event goeh.Event) {
 	os.RemoveAll(h.App.ScriptsHostDir)
 	os.RemoveAll(h.App.ArtifactsHostDir)
 	if err := os.Mkdir(h.App.ScriptsHostDir, os.ModePerm); err != nil {
-		h.returnError(1, ev.BuildID, j.ID, fmt.Sprintf("create scripts temp directory err: %s", err))
+		h.returnError(1, ev.BuildID, j.ID, fmt.Sprintf("create scripts temp directory err: %s", err), ev.IsConditional)
 		return
 	}
 	if err := os.Mkdir(h.App.ArtifactsHostDir, os.ModePerm); err != nil {
-		h.returnError(1, ev.BuildID, j.ID, fmt.Sprintf("create artifacts temp directory err: %s", err))
+		h.returnError(1, ev.BuildID, j.ID, fmt.Sprintf("create artifacts temp directory err: %s", err), ev.IsConditional)
 
 		return
 	}
@@ -76,14 +77,14 @@ func (h *StartJobCommandHandler) Handle(event goeh.Event) {
 		h.executeConditionalTask(lastFailedTask, j.ID, c, h.App.ScriptsHostDir, false)
 
 		if te, ok := lastFailedTaskErr.(*errors.ContainerError); ok {
-			h.returnError(te.ErrorCode, ev.BuildID, j.ID, lastFailedTaskErr.Error())
+			h.returnError(te.ErrorCode, ev.BuildID, j.ID, lastFailedTaskErr.Error(), ev.IsConditional)
 		} else {
-			h.returnError(1, ev.BuildID, j.ID, lastFailedTaskErr.Error())
+			h.returnError(1, ev.BuildID, j.ID, lastFailedTaskErr.Error(), ev.IsConditional)
 		}
 		return
 	}
 
-	h.returnSuccess(ev.BuildID, j.ID, fmt.Sprintf("job '%s' finished", j.DisplayName))
+	h.returnSuccess(ev.BuildID, j.ID, fmt.Sprintf("job '%s' finished", j.DisplayName), ev.IsConditional)
 }
 
 func (p *StartJobCommandHandler) executeConditionalTask(t *structs.Task, jobID string, c *utils.Container, scriptsDir string, onSuccess bool) error {
@@ -143,32 +144,36 @@ func createTaskScriptAsBytes(cmd []string) []byte {
 	return []byte(oneCmd)
 }
 
-func (h *StartJobCommandHandler) returnSuccess(buildID, jobID, message string) {
+func (h *StartJobCommandHandler) returnSuccess(buildID, jobID, message string, isConditionalJob bool) {
 	uid, _ := uuid.GenerateUUID()
 	ev := &agent.JobFinishedEvent{
-		EventData: &goeh.EventData{ID: uid},
-		AgentID:   h.App.Config.AgentID,
-		BuildID:   buildID,
-		JobID:     jobID,
-		Reason:    agent.CompleteJobFinishReason,
-		ErrorCode: 0,
-		Message:   message,
+		EventData:         &goeh.EventData{ID: uid},
+		AgentID:           h.App.Config.AgentID,
+		BuildID:           buildID,
+		JobID:             jobID,
+		Reason:            agent.CompleteJobFinishReason,
+		ErrorCode:         0,
+		Message:           message,
+		WasConditionalJob: isConditionalJob,
 	}
 	h.App.MessagingService.SendMessage(ev)
+	log.Printf("\033[97mfinished job %s\033[0m", jobID)
 }
 
-func (h *StartJobCommandHandler) returnError(errorCode int, buildID, jobID, message string) {
+func (h *StartJobCommandHandler) returnError(errorCode int, buildID, jobID, message string, isConditionalJob bool) {
 	uid, _ := uuid.GenerateUUID()
 	ev := &agent.JobFinishedEvent{
-		EventData: &goeh.EventData{ID: uid},
-		AgentID:   h.App.Config.AgentID,
-		BuildID:   buildID,
-		JobID:     jobID,
-		Reason:    agent.ErrorJobFinishReason,
-		ErrorCode: errorCode,
-		Message:   message,
+		EventData:         &goeh.EventData{ID: uid},
+		AgentID:           h.App.Config.AgentID,
+		BuildID:           buildID,
+		JobID:             jobID,
+		Reason:            agent.ErrorJobFinishReason,
+		ErrorCode:         errorCode,
+		Message:           message,
+		WasConditionalJob: isConditionalJob,
 	}
 	h.App.MessagingService.SendMessage(ev)
+	log.Printf("\033[31mfinished job %s with error\033[0m", jobID)
 }
 
 func (h *StartJobCommandHandler) sendInfoLog(buildID, jobID, log string) {

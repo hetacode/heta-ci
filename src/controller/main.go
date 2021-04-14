@@ -97,6 +97,44 @@ func preparePipeline() *structs.Pipeline {
 					},
 				},
 			},
+			{
+				ID:          "test_busybox",
+				DisplayName: "Busybox runner",
+				Runner:      "busybox",
+				Tasks: []structs.Task{
+					{
+						ID:          "correct",
+						DisplayName: "Correct script",
+						Command: []string{
+							"echo Start",
+							"pwds",
+							"cd /etc && ls -al",
+							"echo End",
+						},
+					},
+				},
+			},
+			{
+				ID:          "when_test_busybox_failed",
+				DisplayName: "Run conditionaly after test busybox failed",
+				Runner:      "ubuntu:20.10",
+				Conditons: []structs.Conditon{
+					{
+						Type: structs.OnFailure,
+						On:   "test_busybox",
+					},
+				},
+				Tasks: []structs.Task{
+					{
+						ID:          "message",
+						DisplayName: "Message task for job 2",
+						Command: []string{
+							"apt update && apt install -y figlet",
+							"figlet \"Don't worry!\"",
+						},
+					},
+				},
+			},
 		},
 	}
 

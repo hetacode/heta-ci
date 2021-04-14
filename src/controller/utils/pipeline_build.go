@@ -22,6 +22,7 @@ type PipelineBuild struct {
 	Status     PipelineStatus
 	Pipeline   *structs.Pipeline
 	Agent      *Agent
+	Triggers   *PipelineTriggers
 
 	LogChan           chan string
 	ErrLogChan        chan string
@@ -41,6 +42,7 @@ func NewPipelineBuild(p *structs.Pipeline, askAgentCh chan string) *PipelineBuil
 		ErrLogChan:        errLogCh,
 		AgentResponseChan: make(chan *Agent),
 		askAgentChan:      askAgentCh,
+		Triggers:          NewPipelineTriggers(),
 	}
 
 	go w.logs()
@@ -50,6 +52,7 @@ func NewPipelineBuild(p *structs.Pipeline, askAgentCh chan string) *PipelineBuil
 
 func (w *PipelineBuild) Run() {
 	w.Status = PipelineStatusWorking
+	w.Triggers.RegisterJobsFor(w.Pipeline)
 
 	// TODO:
 	// 1. create pipeline directory
@@ -67,22 +70,27 @@ func (w *PipelineBuild) Run() {
 			continue
 		}
 
-		w.askAgentChan <- w.ID
-		agent := <-w.AgentResponseChan
-		w.Agent = agent
-
-		oid, _ := uuid.GenerateUUID()
-		ev := &controller.StartJobCommand{
-			EventData:  &goeh.EventData{ID: oid},
-			BuildID:    w.ID,
-			PipelineID: w.Pipeline.Name,
-			Job:        j,
-		}
-
-		agent.SendMessage(ev)
+		w.StartJob(&j, false)
 		// Another jobs will execute in JobFinishedEventHandler
 		return
 	}
+}
+
+func (b *PipelineBuild) StartJob(job *structs.Job, isConditional bool) {
+	b.askAgentChan <- b.ID
+	agent := <-b.AgentResponseChan
+	b.Agent = agent
+
+	oid, _ := uuid.GenerateUUID()
+	ev := &controller.StartJobCommand{
+		EventData:     &goeh.EventData{ID: oid},
+		BuildID:       b.ID,
+		PipelineID:    b.Pipeline.Name,
+		Job:           *job,
+		IsConditional: isConditional,
+	}
+
+	agent.SendMessage(ev)
 }
 
 func (b *PipelineBuild) logs() {
