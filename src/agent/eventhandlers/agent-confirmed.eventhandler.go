@@ -5,7 +5,6 @@ import (
 
 	goeh "github.com/hetacode/go-eh"
 	"github.com/hetacode/heta-ci/agent/app"
-	"github.com/hetacode/heta-ci/agent/utils"
 	events "github.com/hetacode/heta-ci/events/controller"
 )
 
@@ -17,5 +16,5 @@ func (h *AgentConfirmedEventHandler) Handle(event goeh.Event) {
 	ev := event.(*events.AgentConfirmedEvent)
 
 	log.Printf("agent | agent confirmed - id: %s", ev.AgentID)
-	h.App.Config = utils.NewConfig(ev.AgentID)
+	h.App.Config.AgentID = ev.AgentID
 }

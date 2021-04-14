@@ -2,7 +2,6 @@ package utils
 
 import (
 	"fmt"
-	"log"
 
 	"github.com/hashicorp/go-uuid"
 	goeh "github.com/hetacode/go-eh"
@@ -52,8 +51,6 @@ func (a *Agent) ReceivingMessages(em *goeh.EventsMapper) {
 			return
 		}
 
-		log.Printf("agent: %s msg: %s", a.ID, msg.String())
-
 		ev, err := em.Resolve(msg.Payload)
 		if err != nil {
 			a.errorChan <- NewAgentError(a.ID, fmt.Sprintf("agent: %s cannot regnize event err: %s", a.ID, err))
@@ -64,10 +61,12 @@ func (a *Agent) ReceivingMessages(em *goeh.EventsMapper) {
 }
 
 func (a *Agent) SendMessage(event goeh.Event) {
+	event.SavePayload(event)
 	send := &proto.MessageFromController{
 		Type:    event.GetType(),
 		Payload: event.GetPayload(),
 	}
+
 	err := a.client.Send(send)
 	if err != nil {
 		a.errorChan <- NewAgentError(a.ID, fmt.Sprintf("agent: %s send err: %s", a.ID, err))

@@ -1,23 +1,24 @@
-package main
+package handlers
 
 import (
 	"log"
 
 	goeh "github.com/hetacode/go-eh"
-	"github.com/hetacode/heta-ci/agent/app"
+	"github.com/hetacode/heta-ci/agent/utils"
 	"github.com/hetacode/heta-ci/proto"
 )
 
 type MessagingServiceHandler struct {
-	app                  *app.App
+	config               *utils.Config
 	stream               proto.Communication_MessagingServiceClient
 	eventsHandlerManager *goeh.EventsHandlerManager
 }
 
-func NewMessagingServiceHandler(app *app.App, stream proto.Communication_MessagingServiceClient) *MessagingServiceHandler {
+func NewMessagingServiceHandler(config *utils.Config, eventsHandlerManager *goeh.EventsHandlerManager, stream proto.Communication_MessagingServiceClient) *MessagingServiceHandler {
 	ms := &MessagingServiceHandler{
-		app:    app,
-		stream: stream,
+		config:               config,
+		stream:               stream,
+		eventsHandlerManager: eventsHandlerManager,
 	}
 
 	return ms
@@ -27,15 +28,12 @@ func (s *MessagingServiceHandler) ReceivingMessages() {
 	for {
 		msg, err := s.stream.Recv()
 		if err != nil {
-			log.Fatalf("agent | reveive message | err: %s", err)
+			log.Fatalf("agent | receive message | err: %s", err)
 		}
 
-		// TODO:
-		// call events handler manager
-
-		ev, err := s.app.Config.EventsMapper.Resolve(msg.Payload)
+		ev, err := s.config.EventsMapper.Resolve(msg.Payload)
 		if err != nil {
-			log.Printf("agent | failed resolve message type: %s | err: %s", msg.Payload, err)
+			log.Printf("agent | failed resolve message type: %+v | err: %s", msg, err)
 			return
 		}
 		s.eventsHandlerManager.Execute(ev)
@@ -43,9 +41,10 @@ func (s *MessagingServiceHandler) ReceivingMessages() {
 }
 
 func (s *MessagingServiceHandler) SendMessage(e goeh.Event) {
+	e.SavePayload(e)
 	mes := &proto.MessageFromAgent{
-		Id:       s.app.Config.AgentID,
-		Hostname: s.app.Config.Hostname,
+		Id:       s.config.AgentID,
+		Hostname: s.config.Hostname,
 		Type:     e.GetType(),
 		Payload:  e.GetPayload(),
 	}

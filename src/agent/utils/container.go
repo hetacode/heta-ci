@@ -1,4 +1,4 @@
-package main
+package utils
 
 import (
 	"context"
@@ -7,6 +7,7 @@ import (
 	"log"
 	"time"
 
+	"github.com/hetacode/heta-ci/agent/errors"
 	utilsuio "github.com/hetacode/heta-ci/agent/utils/io"
 
 	"github.com/docker/docker/api/types"
@@ -23,13 +24,13 @@ type Container struct {
 }
 
 const (
-	ScriptsDir  = "/scripts"
-	PipelineDir = "/pipeline"
-	JobDir      = "/job"
+	ScriptsDir   = "/scripts"
+	ArtifactsDir = "/artifacts"
+	JobDir       = "/job"
 )
 
 // NewContainer pull docker image, create container and run it
-func NewContainer(image string, scriptsDir, pipelineDir string) *Container {
+func NewContainer(image string, scriptsAgentDir, artifactsAgentDir string) *Container {
 	ctx := context.Background()
 	client, err := client.NewClientWithOpts()
 	if err != nil {
@@ -63,12 +64,12 @@ func NewContainer(image string, scriptsDir, pipelineDir string) *Container {
 			Mounts: []mount.Mount{
 				{
 					Type:   mount.TypeBind,
-					Source: pipelineDir,
-					Target: PipelineDir,
+					Source: artifactsAgentDir,
+					Target: ArtifactsDir,
 				},
 				{
 					Type:   mount.TypeBind,
-					Source: scriptsDir,
+					Source: scriptsAgentDir,
 					Target: ScriptsDir,
 				},
 			},
@@ -100,7 +101,7 @@ func NewContainer(image string, scriptsDir, pipelineDir string) *Container {
 
 // ExecuteScript inside container
 // Script is lying on the host directory which is mounted via volume
-func (c *Container) ExecuteScript(scriptName string, logCh chan string, environments []string) error {
+func (c *Container) ExecuteScript(scriptName string, environments []string) (string, error) {
 	scriptPath := ScriptsDir + "/" + scriptName
 
 	config := types.ExecConfig{
@@ -117,13 +118,12 @@ func (c *Container) ExecuteScript(scriptName string, logCh chan string, environm
 	insp, _ := c.client.ContainerExecInspect(context.Background(), containerExecCreate.ID)
 
 	result := string(l)
-	logCh <- result
 
 	if insp.ExitCode != 0 {
-		return fmt.Errorf("process completed with exit code: %d", insp.ExitCode)
+		return result, &errors.ContainerError{ErrorCode: insp.ExitCode, Message: fmt.Sprintf("process completed with exit code: %d", insp.ExitCode)}
 	}
 
-	return nil
+	return result, nil
 }
 
 // CreateDir inside container

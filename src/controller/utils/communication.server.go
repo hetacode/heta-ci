@@ -16,21 +16,24 @@ type CommunicationServer struct {
 	AgentErrorChan       chan AgentError
 	Agents               []*Agent
 	eventsMapper         *goeh.EventsMapper
+	addAgentChan         chan *Agent
+	removeAgentChan      chan *Agent
 }
 
-func NewCommunicationServer(ehm *goeh.EventsHandlerManager) *CommunicationServer {
+func NewCommunicationServer(ehm *goeh.EventsHandlerManager, addAgentCh, removeAgentCh chan *Agent) *CommunicationServer {
 	errCh := make(chan AgentError)
 	c := &CommunicationServer{
 		AgentErrorChan:       errCh,
 		EventsHandlerManager: ehm,
 		eventsMapper:         events.NewEventsMapper(),
+		addAgentChan:         addAgentCh,
+		removeAgentChan:      removeAgentCh,
 	}
 
 	return c
 }
 
 func (s *CommunicationServer) MessagingService(client proto.Communication_MessagingServiceServer) error {
-
 	a := NewAgent(client, s.AgentErrorChan, s.EventsHandlerManager)
 	go a.ReceivingMessages(s.eventsMapper)
 
@@ -41,20 +44,20 @@ func (s *CommunicationServer) MessagingService(client proto.Communication_Messag
 		EventData: &goeh.EventData{ID: euid},
 		AgentID:   a.ID,
 	}
-	a.SendMessage(ev)
+	go a.SendMessage(ev)
+	log.Printf("agent %s connected", a.ID)
+	s.addAgentChan <- a
+
+	err := <-s.AgentErrorChan
+	log.Printf("\033[31m%s\033[0m", err.Error())
+
+	for i, a := range s.Agents {
+		if a.ID == err.ID {
+			s.Agents = append(s.Agents[:i], s.Agents[i+1:]...)
+			break
+		}
+	}
+	s.removeAgentChan <- a
 
 	return nil
-}
-
-func (s *CommunicationServer) AgentErrorsReceiver() {
-	for err := range s.AgentErrorChan {
-		for i, a := range s.Agents {
-			if a.ID == err.ID {
-				s.Agents = append(s.Agents[:i], s.Agents[i+1:]...)
-				break
-			}
-		}
-
-		log.Printf("\033[31m%s\033[0m", err.Error())
-	}
 }

@@ -14,14 +14,13 @@ type Config struct {
 	EventsMapper *goeh.EventsMapper
 }
 
-func NewConfig(agentID string) *Config {
+func NewConfig() *Config {
 	hostname, err := os.Hostname()
 	if err != nil {
 		log.Fatalf("agent | config get hostaname | err: %s", err)
 	}
 	c := &Config{
 		Hostname:     hostname,
-		AgentID:      agentID,
 		EventsMapper: events.NewEventsMapper(),
 	}
 

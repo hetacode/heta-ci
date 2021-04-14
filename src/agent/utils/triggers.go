@@ -1,4 +1,4 @@
-package main
+package utils
 
 import (
 	"fmt"
@@ -93,4 +93,11 @@ func (t *PipelineTriggers) GetTaskFor(task structs.Task, jobID string, isSuccess
 	}
 
 	return nil
+}
+
+// RegisterTasksTriggers - get all Tasks conditions from Job and register them as a triggers
+func (p *PipelineTriggers) RegisterTasksTriggers(j structs.Job) {
+	for _, t := range j.Tasks {
+		p.RegisterTask(j.ID, t)
+	}
 }

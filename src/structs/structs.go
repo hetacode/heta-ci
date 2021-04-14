@@ -6,25 +6,25 @@ type Pipeline struct {
 }
 
 type Job struct {
-	ID          string // unique name on jobs level - no whitespaces, no special chars
-	DisplayName string
-	Runner      string
-	Tasks       []Task
-	Conditons   []Conditon
+	ID          string     `json:"id"` // unique name on jobs level - no whitespaces, no special chars
+	DisplayName string     `json:"name"`
+	Runner      string     `json:"runner"`
+	Tasks       []Task     `json:"tasks"`
+	Conditons   []Conditon `json:"conditions"`
 }
 
 type Task struct {
-	ID          string // unique name on tasks level - no whitespaces, no special chars
-	DisplayName string
-	Command     []string // one or more
-	Conditons   []Conditon
+	ID          string     `json:"id"` // unique name on tasks level - no whitespaces, no special chars
+	DisplayName string     `json:"name"`
+	Command     []string   `json:"command"` // one or more
+	Conditons   []Conditon `json:"conditions"`
 }
 
 type Conditon struct {
 	// when run
-	Type ConditionType
+	Type ConditionType `json:"type"`
 	// which job/task should trigger this condition "owner"
-	On string
+	On string `json:"on"`
 }
 
 type ConditionType string

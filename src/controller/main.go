@@ -4,6 +4,7 @@ import (
 	"log"
 	"net"
 	"net/http"
+	"time"
 
 	"github.com/gorilla/mux"
 	goeh "github.com/hetacode/go-eh"
@@ -17,8 +18,10 @@ import (
 )
 
 func main() {
+	addAgentCh := make(chan *utils.Agent)
+	removeAgentCh := make(chan *utils.Agent)
 
-	c := utils.NewController()
+	c := utils.NewController(addAgentCh, removeAgentCh)
 	ehm := registerEventHandlers(c)
 
 	c.AddPipeline(preparePipeline())
@@ -29,8 +32,14 @@ func main() {
 		log.Panic(err)
 	}
 	srv := grpc.NewServer()
-	cs := utils.NewCommunicationServer(ehm)
+	cs := utils.NewCommunicationServer(ehm, addAgentCh, removeAgentCh)
 	proto.RegisterCommunicationServer(srv, cs)
+
+	// TEST PIPELINE EXECUTIONS
+	go func() {
+		time.Sleep(10 * time.Second)
+		c.Execute()
+	}()
 
 	err = srv.Serve(lis)
 	if err != nil {
@@ -68,8 +77,8 @@ func preparePipeline() *structs.Pipeline {
 				Runner:      "alpine",
 				Tasks: []structs.Task{
 					{
-						ID:          "correct",
-						DisplayName: "Correct script",
+						ID:          "correct_ls",
+						DisplayName: "Correct script - ls dir",
 						Command: []string{
 							"echo Start",
 							"cd /etc && ls -al",
@@ -77,13 +86,51 @@ func preparePipeline() *structs.Pipeline {
 						},
 					},
 					{
-						ID:          "correct",
-						DisplayName: "Correct script",
+						ID:          "correct_env",
+						DisplayName: "Correct script - env",
 						Command: []string{
 							"echo Start",
 							"echo job artifacts dir: $AGENT_JOB_ARTIFACTS_DIR",
 							"echo scripts dir: $AGENT_SCRIPTS_DIR",
 							"echo End",
+						},
+					},
+				},
+			},
+			{
+				ID:          "test_busybox",
+				DisplayName: "Busybox runner",
+				Runner:      "busybox",
+				Tasks: []structs.Task{
+					{
+						ID:          "correct",
+						DisplayName: "Correct script",
+						Command: []string{
+							"echo Start",
+							"pwds",
+							"cd /etc && ls -al",
+							"echo End",
+						},
+					},
+				},
+			},
+			{
+				ID:          "when_test_busybox_failed",
+				DisplayName: "Run conditionaly after test busybox failed",
+				Runner:      "ubuntu:20.10",
+				Conditons: []structs.Conditon{
+					{
+						Type: structs.OnFailure,
+						On:   "test_busybox",
+					},
+				},
+				Tasks: []structs.Task{
+					{
+						ID:          "message",
+						DisplayName: "Message task for job 2",
+						Command: []string{
+							"apt update && apt install -y figlet",
+							"figlet \"Don't worry!\"",
 						},
 					},
 				},
