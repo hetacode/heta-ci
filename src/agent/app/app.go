@@ -14,6 +14,8 @@ type App struct {
 	MessagingService     *handlers.MessagingServiceHandler
 	ScriptsHostDir       string
 	ArtifactsHostDir     string
+	ArtifactsHostInDir   string
+	ArtifactsHostOutDir  string
 }
 
 func NewApp() *App {
@@ -24,5 +26,7 @@ func NewApp() *App {
 		EventsHandlerManager: goeh.NewEventsHandlerManager(),
 		ScriptsHostDir:       pwd + "/scripts",
 		ArtifactsHostDir:     pwd + "/artifacts",
+		ArtifactsHostInDir:   pwd + "/artifacts/in",
+		ArtifactsHostOutDir:  pwd + "/artifacts/out",
 	}
 }

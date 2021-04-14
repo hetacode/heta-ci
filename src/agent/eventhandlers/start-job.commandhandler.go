@@ -2,6 +2,7 @@ package eventhandlers
 
 import (
 	"fmt"
+	"io/ioutil"
 	"log"
 	"os"
 	"path"
@@ -12,6 +13,7 @@ import (
 	"github.com/hetacode/heta-ci/agent/app"
 	"github.com/hetacode/heta-ci/agent/errors"
 	"github.com/hetacode/heta-ci/agent/utils"
+	"github.com/hetacode/heta-ci/commons"
 	"github.com/hetacode/heta-ci/events/agent"
 	"github.com/hetacode/heta-ci/events/controller"
 	"github.com/hetacode/heta-ci/structs"
@@ -42,13 +44,12 @@ func (h *StartJobCommandHandler) Handle(event goeh.Event) {
 		return
 	}
 
-	pwd, _ := os.Getwd()
-	if err := os.MkdirAll(path.Join(pwd, h.pipelineEnvironments.Env[utils.AgentJobArtifactsInDirEnvName]), os.ModePerm); err != nil {
+	if err := os.MkdirAll(h.App.ArtifactsHostInDir, os.ModePerm); err != nil {
 		h.returnError(1, ev.BuildID, j.ID, fmt.Sprintf("create artifacts temp directory err: %s", err), ev.IsConditional)
 
 		return
 	}
-	if err := os.MkdirAll(path.Join(pwd, h.pipelineEnvironments.Env[utils.AgentJobArtifactsOutDirEnvName]), os.ModePerm); err != nil {
+	if err := os.MkdirAll(h.App.ArtifactsHostOutDir, os.ModePerm); err != nil {
 		h.returnError(1, ev.BuildID, j.ID, fmt.Sprintf("create artifacts temp directory err: %s", err), ev.IsConditional)
 
 		return
@@ -152,6 +153,14 @@ func createTaskScriptAsBytes(cmd []string) []byte {
 }
 
 func (h *StartJobCommandHandler) returnSuccess(buildID, jobID, message string, isConditionalJob bool) {
+	// TODO: move to other place
+	b, err := commons.ArchiveDirectory(h.App.ArtifactsHostOutDir)
+	if err != nil {
+		log.Printf("zip err: %s", err)
+	} else {
+		ioutil.WriteFile(path.Join(h.App.ArtifactsHostDir, "artifacts.zip"), b, 0644)
+	}
+
 	uid, _ := uuid.GenerateUUID()
 	ev := &agent.JobFinishedEvent{
 		EventData:         &goeh.EventData{ID: uid},
@@ -168,6 +177,14 @@ func (h *StartJobCommandHandler) returnSuccess(buildID, jobID, message string, i
 }
 
 func (h *StartJobCommandHandler) returnError(errorCode int, buildID, jobID, message string, isConditionalJob bool) {
+	// TODO: move to other place
+	b, err := commons.ArchiveDirectory(h.App.ArtifactsHostOutDir)
+	if err != nil {
+		log.Printf("zip err: %s", err)
+	} else {
+		ioutil.WriteFile(path.Join(h.App.ArtifactsHostDir, "artifacts.zip"), b, 0644)
+	}
+
 	uid, _ := uuid.GenerateUUID()
 	ev := &agent.JobFinishedEvent{
 		EventData:         &goeh.EventData{ID: uid},

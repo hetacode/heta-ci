@@ -103,59 +103,61 @@ func preparePipeline() *structs.Pipeline {
 						Command: []string{
 							"echo Start",
 							"cat $AGENT_TASKS_DIR/uname.txt",
+							"mkdir $AGENT_JOB_ARTIFACTS_OUT_DIR/test",
+							"echo 'lorem ipsum' >>  $AGENT_JOB_ARTIFACTS_OUT_DIR/test/lorem.txt",
 							"cp $AGENT_TASKS_DIR/uname.txt $AGENT_JOB_ARTIFACTS_OUT_DIR/",
 							"echo end",
 						},
 					},
 				},
 			},
-			{
-				ID:          "test_busybox",
-				DisplayName: "Busybox runner",
-				Runner:      "busybox",
-				Tasks: []structs.Task{
-					{
-						ID:          "correct",
-						DisplayName: "Correct script",
-						Command: []string{
-							"echo Start",
-							"ls -la $AGENT_JOB_ARTIFACTS_IN_DIR/",
-							"cp  $AGENT_JOB_ARTIFACTS_IN_DIR/* $AGENT_TASKS_DIR/",
-							"echo End",
-						},
-					},
-					{
-						ID:          "correct",
-						DisplayName: "Read uname file",
-						Command: []string{
-							"echo Start",
-							"cat $AGENT_TASKS_DIR/uname.txt",
-							"echo End",
-						},
-					},
-				},
-			},
-			{
-				ID:          "when_test_busybox_failed",
-				DisplayName: "Run conditionaly after test busybox failed",
-				Runner:      "ubuntu:20.10",
-				Conditons: []structs.Conditon{
-					{
-						Type: structs.OnFailure,
-						On:   "test_busybox",
-					},
-				},
-				Tasks: []structs.Task{
-					{
-						ID:          "message",
-						DisplayName: "Message task for job 2",
-						Command: []string{
-							"apt update && apt install -y figlet",
-							"figlet \"Don't worry!\"",
-						},
-					},
-				},
-			},
+			// {
+			// 	ID:          "test_busybox",
+			// 	DisplayName: "Busybox runner",
+			// 	Runner:      "busybox",
+			// 	Tasks: []structs.Task{
+			// 		{
+			// 			ID:          "correct",
+			// 			DisplayName: "Correct script",
+			// 			Command: []string{
+			// 				"echo Start",
+			// 				"ls -la $AGENT_JOB_ARTIFACTS_IN_DIR/",
+			// 				"cp  $AGENT_JOB_ARTIFACTS_IN_DIR/* $AGENT_TASKS_DIR/",
+			// 				"echo End",
+			// 			},
+			// 		},
+			// 		{
+			// 			ID:          "correct",
+			// 			DisplayName: "Read uname file",
+			// 			Command: []string{
+			// 				"echo Start",
+			// 				"cat $AGENT_TASKS_DIR/uname.txt",
+			// 				"echo End",
+			// 			},
+			// 		},
+			// 	},
+			// },
+			// {
+			// 	ID:          "when_test_busybox_failed",
+			// 	DisplayName: "Run conditionaly after test busybox failed",
+			// 	Runner:      "ubuntu:20.10",
+			// 	Conditons: []structs.Conditon{
+			// 		{
+			// 			Type: structs.OnFailure,
+			// 			On:   "test_busybox",
+			// 		},
+			// 	},
+			// 	Tasks: []structs.Task{
+			// 		{
+			// 			ID:          "message",
+			// 			DisplayName: "Message task for job 2",
+			// 			Command: []string{
+			// 				"apt update && apt install -y figlet",
+			// 				"figlet \"Don't worry!\"",
+			// 			},
+			// 		},
+			// 	},
+			// },
 		},
 	}
 
