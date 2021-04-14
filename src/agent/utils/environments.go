@@ -27,9 +27,9 @@ type PipelineEnvironments struct {
 func NewPipelineEnvironments(scriptsDir, jobArtifactsDir string) *PipelineEnvironments {
 	p := &PipelineEnvironments{
 		Env: map[string]string{
-			AgentScriptsDirEnvName:         scriptsDir,
-			AgentJobArtifactsInDirEnvName:  path.Join(jobArtifactsDir, "in"),
-			AgentJobArtifactsOutDirEnvName: path.Join(jobArtifactsDir, "out"),
+			AgentScriptsDirEnvName:         ScriptsDir,
+			AgentJobArtifactsInDirEnvName:  path.Join(ArtifactsDir, "in"),
+			AgentJobArtifactsOutDirEnvName: path.Join(ArtifactsDir, "out"),
 			AgentTasksDirEnvName:           "/tasks",
 		},
 	}

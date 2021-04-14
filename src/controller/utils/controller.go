@@ -3,6 +3,7 @@ package utils
 import (
 	"log"
 	"sync"
+	"time"
 
 	"github.com/hetacode/heta-ci/structs"
 )
@@ -56,6 +57,7 @@ func (c *Controller) agentsManager() {
 
 	go func() {
 		for {
+			time.Sleep(100 * time.Millisecond)
 			if len(builds) > 0 {
 				wg.Wait()
 				wg.Add(1)

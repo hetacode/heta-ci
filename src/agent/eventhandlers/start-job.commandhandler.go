@@ -41,7 +41,14 @@ func (h *StartJobCommandHandler) Handle(event goeh.Event) {
 		h.returnError(1, ev.BuildID, j.ID, fmt.Sprintf("create scripts temp directory err: %s", err), ev.IsConditional)
 		return
 	}
-	if err := os.Mkdir(h.App.ArtifactsHostDir, os.ModePerm); err != nil {
+
+	pwd, _ := os.Getwd()
+	if err := os.MkdirAll(path.Join(pwd, h.pipelineEnvironments.Env[utils.AgentJobArtifactsInDirEnvName]), os.ModePerm); err != nil {
+		h.returnError(1, ev.BuildID, j.ID, fmt.Sprintf("create artifacts temp directory err: %s", err), ev.IsConditional)
+
+		return
+	}
+	if err := os.MkdirAll(path.Join(pwd, h.pipelineEnvironments.Env[utils.AgentJobArtifactsOutDirEnvName]), os.ModePerm); err != nil {
 		h.returnError(1, ev.BuildID, j.ID, fmt.Sprintf("create artifacts temp directory err: %s", err), ev.IsConditional)
 
 		return

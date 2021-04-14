@@ -103,6 +103,7 @@ func preparePipeline() *structs.Pipeline {
 						Command: []string{
 							"echo Start",
 							"cat $AGENT_TASKS_DIR/uname.txt",
+							"cp $AGENT_TASKS_DIR/uname.txt $AGENT_JOB_ARTIFACTS_OUT_DIR/",
 							"echo end",
 						},
 					},
@@ -118,8 +119,17 @@ func preparePipeline() *structs.Pipeline {
 						DisplayName: "Correct script",
 						Command: []string{
 							"echo Start",
-							"pwds",
-							"cd /etc && ls -al",
+							"ls -la $AGENT_JOB_ARTIFACTS_IN_DIR/",
+							"cp  $AGENT_JOB_ARTIFACTS_IN_DIR/* $AGENT_TASKS_DIR/",
+							"echo End",
+						},
+					},
+					{
+						ID:          "correct",
+						DisplayName: "Read uname file",
+						Command: []string{
+							"echo Start",
+							"cat $AGENT_TASKS_DIR/uname.txt",
 							"echo End",
 						},
 					},
