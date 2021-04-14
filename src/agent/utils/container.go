@@ -27,6 +27,7 @@ const (
 	ScriptsDir   = "/scripts"
 	ArtifactsDir = "/artifacts"
 	JobDir       = "/job"
+	TasksDir     = "/tasks"
 )
 
 // NewContainer pull docker image, create container and run it

@@ -51,7 +51,7 @@ func (h *StartJobCommandHandler) Handle(event goeh.Event) {
 	c := utils.NewContainer(j.Runner, h.App.ScriptsHostDir, h.App.ArtifactsHostDir)
 	defer c.Dispose()
 
-	c.CreateDir(path.Join(utils.JobDir, j.ID))
+	c.CreateDir(utils.TasksDir)
 
 	var lastFailedTask *structs.Task
 	var lastFailedTaskErr error

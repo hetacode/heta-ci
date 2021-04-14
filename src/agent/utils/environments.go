@@ -2,14 +2,17 @@ package utils
 
 import (
 	"fmt"
+	"path"
 
 	"github.com/hetacode/heta-ci/structs"
 )
 
 const (
-	AgentScriptsDirEnvName      = "AGENT_SCRIPTS_DIR"
-	AgentJobArtifactsDirEnvName = "AGENT_JOB_ARTIFACTS_DIR"
-	// AgentPipelineArtifactsDirEnvName = "AGENT_PIPELINE_ARTIFACTS_DIR"
+	AgentScriptsDirEnvName         = "AGENT_SCRIPTS_DIR"           // directory where lands tasks commands scripts
+	AgentJobArtifactsInDirEnvName  = "AGENT_JOB_ARTIFACTS_IN_DIR"  // directory where land downloaded artifacts
+	AgentJobArtifactsOutDirEnvName = "AGENT_JOB_ARTIFACTS_OUT_DIR" // directory where task can put files that will were upload to the controller at the end of job
+
+	AgentTasksDirEnvName   = "AGENT_TASKS_DIR"
 	AgentJobIDEnvName      = "AGENT_JOB_ID"
 	AgentJobNameEnvName    = "AGENT_JOB_NAME"
 	AgentPipelineIDEnvName = "AGENT_PIPELINE_ID" // should be create by controller as unique uuid
@@ -24,9 +27,10 @@ type PipelineEnvironments struct {
 func NewPipelineEnvironments(scriptsDir, jobArtifactsDir string) *PipelineEnvironments {
 	p := &PipelineEnvironments{
 		Env: map[string]string{
-			AgentScriptsDirEnvName:      scriptsDir,
-			AgentJobArtifactsDirEnvName: jobArtifactsDir,
-			// AgentPipelineArtifactsDirEnvName: pipelineDir,
+			AgentScriptsDirEnvName:         scriptsDir,
+			AgentJobArtifactsInDirEnvName:  path.Join(jobArtifactsDir, "in"),
+			AgentJobArtifactsOutDirEnvName: path.Join(jobArtifactsDir, "out"),
+			AgentTasksDirEnvName:           "/tasks",
 		},
 	}
 	return p

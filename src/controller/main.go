@@ -81,7 +81,7 @@ func preparePipeline() *structs.Pipeline {
 						DisplayName: "Correct script - ls dir",
 						Command: []string{
 							"echo Start",
-							"cd /etc && ls -al",
+							"uname -a >> $AGENT_TASKS_DIR/uname.txt",
 							"echo End",
 						},
 					},
@@ -90,9 +90,20 @@ func preparePipeline() *structs.Pipeline {
 						DisplayName: "Correct script - env",
 						Command: []string{
 							"echo Start",
-							"echo job artifacts dir: $AGENT_JOB_ARTIFACTS_DIR",
+							"echo job artifacts IN dir: $AGENT_JOB_ARTIFACTS_IN_DIR",
+							"echo job artifacts OUT dir: $AGENT_JOB_ARTIFACTS_OUT_DIR",
+							"echo job tasks dir: $AGENT_TASKS_DIR",
 							"echo scripts dir: $AGENT_SCRIPTS_DIR",
 							"echo End",
+						},
+					},
+					{
+						ID:          "read_uname_file",
+						DisplayName: "Read the file with uname saved value",
+						Command: []string{
+							"echo Start",
+							"cat $AGENT_TASKS_DIR/uname.txt",
+							"echo end",
 						},
 					},
 				},
