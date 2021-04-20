@@ -45,5 +45,13 @@ func ArchiveDirectory(path string) ([]byte, error) {
 	}
 
 	return buf.Bytes(), nil
+}
 
+func IsFileExists(path string) (bool, error) {
+	_, err := os.Stat(path)
+	if os.IsNotExist(err) {
+		return false, nil
+	}
+
+	return err == nil, err
 }

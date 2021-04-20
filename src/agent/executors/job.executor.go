@@ -2,10 +2,15 @@ package executors
 
 import (
 	"fmt"
+	"io/ioutil"
+	"log"
 	"os"
+	"path"
 
 	"github.com/hetacode/heta-ci/agent/app"
+	"github.com/hetacode/heta-ci/agent/errors"
 	"github.com/hetacode/heta-ci/agent/utils"
+	"github.com/hetacode/heta-ci/commons"
 	"github.com/hetacode/heta-ci/structs"
 )
 
@@ -64,8 +69,44 @@ func (e *JobExecutor) Execute() {
 
 	te := NewTasksExecutor(e.app, e.pipelineEnvironments, e.pipelineTriggers, c, e.logger, e.job.Tasks, e.buildID, e.job.ID, e.app.ScriptsHostDir, e.isConditional)
 	if err := te.Execute(); err == nil {
-		e.logger.ReturnSuccess(e.buildID, e.job.ID, fmt.Sprintf("job '%s' finished", e.job.DisplayName), e.isConditional)
+		createArtifactsPackage(e.app.ArtifactsHostDir, e.app.ArtifactsHostOutDir, e.buildID, e.job.ID)
+		if err := e.uploadArtifacts(); err != nil {
+			e.logger.ReturnError(1, e.buildID, e.job.ID, err.Error(), e.isConditional)
+		} else {
+			e.logger.ReturnSuccess(e.buildID, e.job.ID, fmt.Sprintf("job '%s' finished", e.job.DisplayName), e.isConditional)
+		}
+	} else if te, ok := err.(*errors.ContainerError); ok {
+		e.logger.ReturnError(te.ErrorCode, e.buildID, e.job.ID, err.Error(), e.isConditional)
+	} else {
+		e.logger.ReturnError(1, e.buildID, e.job.ID, err.Error(), e.isConditional)
 	}
+
+}
+
+func createArtifactsPackage(artifactsDirPath, artifatcsOutDirPath, buildID, jobID string) {
+	b, err := commons.ArchiveDirectory(artifatcsOutDirPath)
+	if err != nil {
+		log.Printf("zip err: %s", err)
+	} else {
+		ioutil.WriteFile(path.Join(artifactsDirPath, utils.ArtifactsFileName(buildID, jobID)), b, 0644)
+	}
+}
+
+func (e *JobExecutor) uploadArtifacts() error {
+	exists, err := commons.IsFileExists(path.Join(e.app.ArtifactsHostDir, utils.ArtifactsFileName(e.buildID, e.job.ID)))
+	if exists {
+		bytes, err := ioutil.ReadFile(path.Join(e.app.ArtifactsHostDir, utils.ArtifactsFileName(e.buildID, e.job.ID)))
+		if err != nil {
+			return fmt.Errorf("couldn't read artifacts file | err: %s", err)
+		}
+
+		e.app.ArtifactsService.UploadArtifacts(e.buildID, e.job.ID, bytes)
+	}
+	if err != nil {
+		return fmt.Errorf("cannot upload artifacts | err: %s", err)
+	}
+
+	return nil
 }
 
 func (e *JobExecutor) createInitDirs() error {

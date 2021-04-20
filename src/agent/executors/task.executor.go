@@ -8,7 +8,6 @@ import (
 
 	"github.com/hashicorp/go-uuid"
 	"github.com/hetacode/heta-ci/agent/app"
-	"github.com/hetacode/heta-ci/agent/errors"
 	"github.com/hetacode/heta-ci/agent/utils"
 	"github.com/hetacode/heta-ci/structs"
 )
@@ -71,11 +70,6 @@ func (t *TasksExecutor) Execute() error {
 	if lastFailedTask != nil {
 		t.executeConditionalTask(lastFailedTask, t.buildID, t.jobID, t.container, t.app.ScriptsHostDir, false)
 
-		if te, ok := lastFailedTaskErr.(*errors.ContainerError); ok {
-			t.logger.ReturnError(te.ErrorCode, t.buildID, t.jobID, lastFailedTaskErr.Error(), t.isConditionalJob)
-		} else {
-			t.logger.ReturnError(1, t.buildID, t.jobID, lastFailedTaskErr.Error(), t.isConditionalJob)
-		}
 		return lastFailedTaskErr
 	}
 

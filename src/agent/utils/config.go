@@ -1,6 +1,7 @@
 package utils
 
 import (
+	"fmt"
 	"log"
 	"os"
 
@@ -25,4 +26,8 @@ func NewConfig() *Config {
 	}
 
 	return c
+}
+
+func ArtifactsFileName(buildID, jobID string) string {
+	return fmt.Sprintf("artifacts_%s_%s.zip", buildID, jobID)
 }
