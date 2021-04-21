@@ -3,7 +3,10 @@ package services
 import (
 	"bytes"
 	"fmt"
+	"mime/multipart"
 	"net/http"
+
+	"github.com/hetacode/heta-ci/agent/utils"
 )
 
 type ArtifactsService struct {
@@ -19,18 +22,25 @@ func NewArtifactsService(controllerBaseURL string) *ArtifactsService {
 }
 
 func (s *ArtifactsService) UploadArtifacts(buildID, jobID string, fileBytes []byte) error {
+
+	url := fmt.Sprintf("%s/upload/%s/%s", s.controllerBaseURL, buildID, jobID)
+	filename := utils.ArtifactsFileName(buildID, jobID)
+
 	var buf bytes.Buffer
-	_, err := buf.Write(fileBytes)
+	writer := multipart.NewWriter(&buf)
+	wr, err := writer.CreateFormFile("file", filename)
 	if err != nil {
 		return err
 	}
+	wr.Write(fileBytes)
+	writer.Close()
 
-	url := fmt.Sprintf("%s/upload/%s/%s", s.controllerBaseURL, buildID, jobID)
+	client := &http.Client{}
 	req, err := http.NewRequest(http.MethodPost, url, &buf)
 	if err != nil {
 		return err
 	}
-	client := &http.Client{}
+	req.Header.Set("Content-Type", writer.FormDataContentType())
 	if _, err = client.Do(req); err != nil {
 		return err
 	}
