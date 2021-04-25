@@ -16,6 +16,10 @@ jobs:
       with:
         go-version: 1.16
 
+    - name: Update protos
+      run: |
+        ./update.sh
+
     - name: Build Controller
       run: |
         cd src/controller
