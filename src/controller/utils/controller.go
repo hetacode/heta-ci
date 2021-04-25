@@ -2,6 +2,7 @@ package utils
 
 import (
 	"log"
+	"os"
 	"sync"
 	"time"
 
@@ -32,6 +33,10 @@ func NewController(addAgentCh, removeAgentCh chan *Agent) *Controller {
 		removeAgentCh:         removeAgentCh,
 	}
 	go c.agentsManager()
+
+	if err := os.Mkdir(PipelinesDir, 0777); err != nil {
+		log.Printf("start controller | warning: create %s directory failed | %s", PipelinesDir, err)
+	}
 
 	return c
 }

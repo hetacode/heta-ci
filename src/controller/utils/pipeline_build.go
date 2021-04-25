@@ -1,7 +1,10 @@
 package utils
 
 import (
+	"fmt"
 	"log"
+	"os"
+	"path"
 
 	"github.com/hashicorp/go-uuid"
 	goeh "github.com/hetacode/go-eh"
@@ -16,6 +19,12 @@ const (
 	PipelineStatusWorking                = "working"
 )
 
+const (
+	PipelinesDir = "pipelines"
+	ArtifactsDir = "artifacts"
+	CodeDir      = "code"
+)
+
 type PipelineBuild struct {
 	ID         string
 	CommitHash string
@@ -23,6 +32,9 @@ type PipelineBuild struct {
 	Pipeline   *structs.Pipeline
 	Agent      *Agent
 	Triggers   *PipelineTriggers
+
+	ArtifactsDir string
+	CodeDir      string
 
 	LogChan           chan string
 	ErrLogChan        chan string
@@ -64,6 +76,11 @@ func (w *PipelineBuild) Run() {
 	// 7. jobs and inner tasks push logs via rtm channel
 	// 8. on finish pipeline (or any error) all resources should be cleaned up (like pipeline directory)
 
+	if err := w.initBuildDirs(w.ID); err != nil {
+		w.ErrLogChan <- err.Error()
+		return
+	}
+
 	for _, j := range w.Pipeline.Jobs {
 		// Job with conditions should run in special way
 		if len(j.Conditons) != 0 {
@@ -103,4 +120,25 @@ func (b *PipelineBuild) logs() {
 		}
 
 	}
+}
+
+func (b *PipelineBuild) initBuildDirs(pipelineID string) error {
+	pipelineDir := path.Join(PipelinesDir, pipelineID)
+	artifactsDir := path.Join(pipelineDir, ArtifactsDir)
+	codeCheckoutDir := path.Join(pipelineDir, CodeDir)
+
+	if err := os.Mkdir(pipelineDir, 0777); err != nil {
+		return fmt.Errorf("start pipeline build | create %s dir failed | err: %s", pipelineDir, err)
+	}
+	if err := os.Mkdir(artifactsDir, 0777); err != nil {
+		return fmt.Errorf("start pipeline build | create %s dir failed | err: %s", pipelineDir, err)
+	}
+	if err := os.Mkdir(codeCheckoutDir, 0777); err != nil {
+		return fmt.Errorf("start pipeline build | create %s dir failed | err: %s", pipelineDir, err)
+	}
+
+	b.CodeDir = codeCheckoutDir
+	b.ArtifactsDir = artifactsDir
+
+	return nil
 }

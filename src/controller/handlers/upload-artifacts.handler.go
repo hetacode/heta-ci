@@ -1,10 +1,10 @@
 package handlers
 
 import (
-	"archive/zip"
 	"fmt"
-	"io"
+	"log"
 	"net/http"
+	"os"
 
 	"github.com/gorilla/mux"
 )
@@ -13,17 +13,36 @@ func (h *Handlers) UploadArtifactsHandler(w http.ResponseWriter, r *http.Request
 	vars := mux.Vars(r)
 	buildID := vars["buildId"]
 	jobID := vars["jobId"]
-	file, handler, _ := r.FormFile("file")
+	file, _, _ := r.FormFile("file")
 	defer file.Close()
 
-	reader, _ := zip.NewReader(file, handler.Size)
-	for _, file := range reader.File {
-		fr, _ := file.Open()
-		b, _ := io.ReadAll(fr)
-		fmt.Println(string(b))
-	}
-	fmt.Printf("upladed artifacts for job: %s | build: %s", jobID, buildID)
+	build, ok := h.Controller.Builds[buildID]
+	if !ok {
+		errorReponse(w, fmt.Sprintf("upload artifacts | build %s doesn't exists", buildID))
 
-	// TODO:
-	// artifacts should be save in some temporary directory for given build pipeline
+		return
+	}
+
+	var buf []byte
+	if _, err := file.Read(buf); err != nil {
+		errorReponse(w, fmt.Sprintf("upload artifacts | read file err %s", err))
+
+		return
+	}
+
+	filePath := build.ArtifactsDir + "/" + jobID + ".zip"
+	if err := os.WriteFile(filePath, buf, 0644); err != nil {
+		errorReponse(w, fmt.Sprintf("upload artifacts | save artifacts archive failed err %s", err))
+		return
+	}
+
+	log.Printf("uploaded artifacts for job: %s | build: %s | path: %s", jobID, buildID, filePath)
+}
+
+func errorReponse(w http.ResponseWriter, msg string) error {
+	log.Printf(msg)
+	w.Write([]byte(msg))
+	w.WriteHeader(http.StatusBadRequest)
+
+	return fmt.Errorf(msg)
 }

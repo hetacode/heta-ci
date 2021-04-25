@@ -26,7 +26,7 @@ func main() {
 
 	c.AddPipeline(preparePipeline())
 
-	go initRestApi()
+	go initRestApi(c)
 	lis, err := net.Listen("tcp", ":5000")
 	if err != nil {
 		log.Panic(err)
@@ -47,8 +47,8 @@ func main() {
 	}
 }
 
-func initRestApi() {
-	h := &handlers.Handlers{}
+func initRestApi(c *utils.Controller) {
+	h := &handlers.Handlers{Controller: c}
 	r := mux.NewRouter()
 	r.HandleFunc("/download/{category}/{buildId}", h.DownloadFileHandler)
 	r.HandleFunc("/upload/{buildId}/{jobId}", h.UploadArtifactsHandler)
