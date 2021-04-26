@@ -18,7 +18,7 @@ jobs:
 
     - name: Update protos
       run: |
-        apt update && apt install -y protobuf-compiler
+        sudo apt update && sudo apt install -y protobuf-compiler
         ./update.sh
 
     - name: Build Controller
