@@ -21,6 +21,20 @@ func NewArtifactsService(controllerBaseURL string) *ArtifactsService {
 	return s
 }
 
+func (s *ArtifactsService) DownloadArtifacts(buildID string) ([]byte, error) {
+	url := fmt.Sprintf("%s/download/artifacts/%s", s.controllerBaseURL, buildID)
+	res, err := http.Get(url)
+	if err != nil {
+		return nil, err
+	}
+	buf := bytes.Buffer{}
+	if _, err := buf.ReadFrom(res.Body); err != nil {
+		return nil, err
+	}
+
+	return buf.Bytes(), nil
+}
+
 func (s *ArtifactsService) UploadArtifacts(buildID, jobID string, fileBytes []byte) error {
 
 	url := fmt.Sprintf("%s/upload/%s/%s", s.controllerBaseURL, buildID, jobID)

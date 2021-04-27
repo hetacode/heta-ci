@@ -83,6 +83,10 @@ func (e *JobExecutor) Execute() {
 
 }
 
+func extractArtifactsPackage(artifactsInDirPath, buildID string) {
+
+}
+
 func createArtifactsPackage(artifactsDirPath, artifatcsOutDirPath, buildID, jobID string) {
 	b, err := commons.ArchiveDirectory(artifatcsOutDirPath)
 	if err != nil {
