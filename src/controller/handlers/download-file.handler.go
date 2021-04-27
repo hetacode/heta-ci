@@ -7,6 +7,7 @@ import (
 	"strconv"
 
 	"github.com/gorilla/mux"
+	"github.com/hetacode/heta-ci/commons"
 	"github.com/hetacode/heta-ci/controller/utils"
 )
 
@@ -49,10 +50,15 @@ func (h *Handlers) prepareAndGetCodeRepository(buildID string) []byte {
 
 func (h *Handlers) prepareAndGetArtifacts(build *utils.PipelineBuild) ([]byte, error) {
 	artifactsFilePath := build.ArtifactsDir + "/artifacts.zip"
-	bytes, err := os.ReadFile(artifactsFilePath)
-	if os.IsNotExist(err) {
+	exists, err := commons.IsFileExists(artifactsFilePath)
+	if err != nil {
+		return nil, fmt.Errorf("get artifacts file exists failed: %s", err)
+	}
+	if !exists {
 		return make([]byte, 0), nil
 	}
+
+	bytes, err := os.ReadFile(artifactsFilePath)
 	if err != nil {
 		return nil, fmt.Errorf("get artifacts failed: %s", err)
 	}

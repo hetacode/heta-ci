@@ -8,6 +8,7 @@ import (
 
 	"github.com/hashicorp/go-uuid"
 	goeh "github.com/hetacode/go-eh"
+	"github.com/hetacode/heta-ci/commons"
 	"github.com/hetacode/heta-ci/events/controller"
 	"github.com/hetacode/heta-ci/structs"
 )
@@ -67,13 +68,8 @@ func (w *PipelineBuild) Run() {
 	w.Triggers.RegisterJobsFor(w.Pipeline)
 
 	// TODO:
-	// 1. create pipeline directory
 	// 2. archive whole repo
 	// 3. expose archive via api
-	// 4. iterate through jobs
-	// 5. for each job ask for free agent
-	// 6. if job return any artifacts, save them to the pipeline dir via exposed api
-	// 7. jobs and inner tasks push logs via rtm channel
 	// 8. on finish pipeline (or any error) all resources should be cleaned up (like pipeline directory)
 
 	if err := w.initBuildDirs(w.ID); err != nil {
@@ -87,13 +83,21 @@ func (w *PipelineBuild) Run() {
 			continue
 		}
 
-		w.StartJob(&j, false)
+		if err := w.StartJob(&j, false); err != nil {
+			w.ErrLogChan <- err.Error()
+		}
 		// Another jobs will execute in JobFinishedEventHandler
 		return
 	}
 }
 
-func (b *PipelineBuild) StartJob(job *structs.Job, isConditional bool) {
+func (b *PipelineBuild) StartJob(job *structs.Job, isConditional bool) error {
+	artifactsFilePath := b.ArtifactsDir + "/artifacts.zip"
+	hasArtifacts, err := commons.IsFileExists(artifactsFilePath)
+	if err != nil {
+		return fmt.Errorf("get artifacts file exists failed: %s", err)
+	}
+
 	b.askAgentChan <- b.ID
 	agent := <-b.AgentResponseChan
 	b.Agent = agent
@@ -105,9 +109,12 @@ func (b *PipelineBuild) StartJob(job *structs.Job, isConditional bool) {
 		PipelineID:    b.Pipeline.Name,
 		Job:           *job,
 		IsConditional: isConditional,
+		HasArtifacts:  hasArtifacts,
 	}
 
 	agent.SendMessage(ev)
+
+	return nil
 }
 
 func (b *PipelineBuild) logs() {

@@ -13,6 +13,7 @@ type StartJobCommand struct {
 	PipelineID    string      `json:"pipeline_id"`
 	Job           structs.Job `json:"job"`
 	IsConditional bool        `json:"is_conditional"`
+	HasArtifacts  bool        `json:"has_artifacts"`
 }
 
 func (e *StartJobCommand) GetType() string {
