@@ -1,13 +1,13 @@
 package handlers
 
 import (
-	"archive/zip"
-	"bytes"
 	"fmt"
 	"net/http"
+	"os"
 	"strconv"
 
 	"github.com/gorilla/mux"
+	"github.com/hetacode/heta-ci/controller/utils"
 )
 
 func (h *Handlers) DownloadFileHandler(w http.ResponseWriter, r *http.Request) {
@@ -15,27 +15,30 @@ func (h *Handlers) DownloadFileHandler(w http.ResponseWriter, r *http.Request) {
 
 	category := FileCategory(vars["category"])
 	buildID := vars["buildId"]
+	build, ok := h.Controller.Builds[buildID]
+	if !ok {
+		errorReponse(w, fmt.Sprintf("download | build %s doesn't exists", buildID))
+
+		return
+	}
 
 	var b []byte
+	var err error
 	switch category {
 	case RepoFileCategory:
 		b = h.prepareAndGetCodeRepository(buildID)
 	case ArtifactsFileCategory:
-		b = h.prepareAndGetArtifacts(buildID)
+		b, err = h.prepareAndGetArtifacts(build)
 	}
 
-	// TOOD: just for test
-	// in real implementation that should create archive for all files for code repository or pipline artifacts
-	var buf bytes.Buffer
-	zw := zip.NewWriter(&buf)
-	zc, _ := zw.Create("test.txt")
-	zc.Write(b)
-	defer zw.Close()
+	if err != nil {
+		http.Error(w, fmt.Sprintf("%s download failed | err: %s", category, err), http.StatusInternalServerError)
+	}
 
 	w.Header().Add("Content-Type", "application/zip")
 	w.Header().Add("Content-Disposition", fmt.Sprintf("attachment; filename=%s_%s.zip", category, buildID))
-	w.Header().Add("Content-Length", strconv.Itoa(buf.Len()))
-	if _, err := w.Write(buf.Bytes()); err != nil {
+	w.Header().Add("Content-Length", strconv.Itoa(len(b)))
+	if _, err := w.Write(b); err != nil {
 		http.Error(w, fmt.Sprintf("%s download failed", category), http.StatusInternalServerError)
 	}
 }
@@ -44,6 +47,15 @@ func (h *Handlers) prepareAndGetCodeRepository(buildID string) []byte {
 	return []byte("test prepareAndGetCodeRepository")
 }
 
-func (h *Handlers) prepareAndGetArtifacts(buildID string) []byte {
-	panic("unimplemented prepareAndGetArtifacts")
+func (h *Handlers) prepareAndGetArtifacts(build *utils.PipelineBuild) ([]byte, error) {
+	artifactsFilePath := build.ArtifactsDir + "/artifacts.zip"
+	bytes, err := os.ReadFile(artifactsFilePath)
+	if os.IsNotExist(err) {
+		return make([]byte, 0), nil
+	}
+	if err != nil {
+		return nil, fmt.Errorf("get artifacts failed: %s", err)
+	}
+
+	return bytes, nil
 }
