@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"fmt"
+	"io"
 	"log"
 	"net/http"
 	"os"
@@ -24,13 +25,18 @@ func (h *Handlers) UploadArtifactsHandler(w http.ResponseWriter, r *http.Request
 	}
 
 	var buf []byte
-	if _, err := file.Read(buf); err != nil {
+	buf, err := io.ReadAll(file)
+	if err != nil {
 		errorReponse(w, fmt.Sprintf("upload artifacts | read file err %s", err))
 
 		return
 	}
 
-	filePath := build.ArtifactsDir + "/" + jobID + ".zip"
+	filePath := build.ArtifactsDir + "/artifacts.zip"
+
+	os.RemoveAll(build.ArtifactsDir)
+	os.MkdirAll(build.ArtifactsDir, 0777)
+
 	if err := os.WriteFile(filePath, buf, 0644); err != nil {
 		errorReponse(w, fmt.Sprintf("upload artifacts | save artifacts archive failed err %s", err))
 		return
