@@ -111,32 +111,32 @@ func preparePipeline() *structs.Pipeline {
 					},
 				},
 			},
-			// {
-			// 	ID:          "test_busybox",
-			// 	DisplayName: "Busybox runner",
-			// 	Runner:      "busybox",
-			// 	Tasks: []structs.Task{
-			// 		{
-			// 			ID:          "correct",
-			// 			DisplayName: "Correct script",
-			// 			Command: []string{
-			// 				"echo Start",
-			// 				"ls -la $AGENT_JOB_ARTIFACTS_IN_DIR/",
-			// 				"cp  $AGENT_JOB_ARTIFACTS_IN_DIR/* $AGENT_TASKS_DIR/",
-			// 				"echo End",
-			// 			},
-			// 		},
-			// 		{
-			// 			ID:          "correct",
-			// 			DisplayName: "Read uname file",
-			// 			Command: []string{
-			// 				"echo Start",
-			// 				"cat $AGENT_TASKS_DIR/uname.txt",
-			// 				"echo End",
-			// 			},
-			// 		},
-			// 	},
-			// },
+			{
+				ID:          "test_busybox",
+				DisplayName: "Busybox runner",
+				Runner:      "busybox",
+				Tasks: []structs.Task{
+					{
+						ID:          "correct",
+						DisplayName: "Correct script",
+						Command: []string{
+							"echo Start",
+							"ls -la $AGENT_JOB_ARTIFACTS_IN_DIR/",
+							"cp -r $AGENT_JOB_ARTIFACTS_IN_DIR/* $AGENT_TASKS_DIR/",
+							"echo End",
+						},
+					},
+					{
+						ID:          "correct",
+						DisplayName: "Read uname file",
+						Command: []string{
+							"echo Start",
+							"cat $AGENT_TASKS_DIR/uname.txt",
+							"echo End",
+						},
+					},
+				},
+			},
 			// {
 			// 	ID:          "when_test_busybox_failed",
 			// 	DisplayName: "Run conditionaly after test busybox failed",

@@ -29,16 +29,22 @@ func ExtractDirectory(artifactsBytes []byte, dirPath string) error {
 			continue
 		}
 
-		f, err := os.OpenFile(p, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, file.Mode())
-		defer f.Close()
-		if err != nil {
-			return fmt.Errorf("ExtractDirectory - create file err: %s", err)
+		if err := os.MkdirAll(filepath.Dir(p), 0777); err != nil {
+			if !os.IsExist(err) {
+				return fmt.Errorf("ExtractDirectory - create dir err: %s", err)
+			}
 		}
 
-		archiveFileReader, _ := file.Open()
-		defer archiveFileReader.Close()
-		if _, err := io.Copy(f, archiveFileReader); err != nil {
-			return fmt.Errorf("ExtractDirectory - save content to file err: %s", err)
+		archiveFileReader, err := file.Open()
+		if err != nil {
+			return fmt.Errorf("Cannot open archive file %s | err: %s", file.Name, err)
+		}
+		b := bytes.Buffer{}
+		if _, err := b.ReadFrom(archiveFileReader); err != nil {
+			return fmt.Errorf("Cannot read from archive file %s | err: %s", file.Name, err)
+		}
+		if err := os.WriteFile(p, b.Bytes(), file.Mode()); err != nil {
+			return fmt.Errorf("ExtractDirectory - create file err: %s", err)
 		}
 	}
 

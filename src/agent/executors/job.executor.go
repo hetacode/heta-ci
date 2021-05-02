@@ -23,6 +23,7 @@ type JobExecutor struct {
 	buildID              string
 	job                  *structs.Job
 	isConditional        bool
+	hasArtificats        bool
 }
 
 func NewJobExecutor(
@@ -34,6 +35,7 @@ func NewJobExecutor(
 	pipelineID string,
 	buildID string,
 	isConditional bool,
+	hasArtificats bool,
 ) *JobExecutor {
 	e := &JobExecutor{
 		app:                  a,
@@ -42,6 +44,7 @@ func NewJobExecutor(
 		pipelineID:           pipelineID,
 		buildID:              buildID,
 		isConditional:        isConditional,
+		hasArtificats:        hasArtificats,
 		pipelineTriggers:     utils.NewPipelineTriggers(),
 		pipelineEnvironments: utils.NewPipelineEnvironments(a.ScriptsHostDir, a.ArtifactsHostDir),
 	}
@@ -61,6 +64,11 @@ func (e *JobExecutor) Execute() {
 		return
 	}
 	e.pipelineEnvironments.SetCurrent(e.pipelineID, e.job.DisplayName)
+
+	if err := e.downloadAndExtractArtifactsPackage(); err != nil {
+		e.logger.ReturnError(1, e.buildID, e.job.ID, err.Error(), e.isConditional)
+		return
+	}
 
 	c := utils.NewContainer(e.job.Runner, e.app.ScriptsHostDir, e.app.ArtifactsHostDir)
 	defer c.Dispose()
@@ -83,8 +91,18 @@ func (e *JobExecutor) Execute() {
 
 }
 
-func extractArtifactsPackage(artifactsInDirPath, buildID string) {
+func (j *JobExecutor) downloadAndExtractArtifactsPackage() error {
+	if j.hasArtificats {
+		fileBytes, err := j.app.ArtifactsService.DownloadArtifacts(j.buildID)
+		if err != nil {
+			return fmt.Errorf("start job | download artifacts failed | err: %s", err)
+		}
+		if err := commons.ExtractDirectory(fileBytes, j.app.ArtifactsHostInDir); err != nil {
+			return fmt.Errorf("start job | extract artifacts file failed | err: %s", err)
+		}
+	}
 
+	return nil
 }
 
 func createArtifactsPackage(artifactsDirPath, artifatcsOutDirPath, buildID, jobID string) {
