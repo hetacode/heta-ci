@@ -29,14 +29,18 @@ func (e *JobFinishedEventHandler) Handle(event goeh.Event) {
 		if nextJob == nil {
 			return
 		}
-		b.StartJob(nextJob, true)
+		if err := b.StartJob(nextJob, true); err != nil {
+			b.ErrLogChan <- err.Error()
+		}
 		return
 	case agent.CompleteJobFinishReason:
 		b.LogChan <- ev.Message
 
 		nextJob := b.Triggers.GetJobFor(ev.JobID, true)
 		if nextJob != nil {
-			b.StartJob(nextJob, true)
+			if err := b.StartJob(nextJob, true); err != nil {
+				b.ErrLogChan <- err.Error()
+			}
 			return
 		}
 		// Go to looking for another job
@@ -64,7 +68,9 @@ func (e *JobFinishedEventHandler) Handle(event goeh.Event) {
 			continue
 		}
 
-		b.StartJob(&j, false)
+		if err := b.StartJob(&j, false); err != nil {
+			b.ErrLogChan <- err.Error()
+		}
 		return
 	}
 }

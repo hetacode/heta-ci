@@ -19,10 +19,12 @@ require (
 	github.com/sirupsen/logrus v1.8.1 // indirect
 	google.golang.org/grpc v1.37.0 // indirect
 	github.com/hetacode/heta-ci/events v0.0.1
+	github.com/hetacode/heta-ci/commons v0.0.1
 )
 
 replace (
 	github.com/hetacode/heta-ci/proto => ../proto-gen
 	github.com/hetacode/heta-ci/structs => ../structs
 	github.com/hetacode/heta-ci/events => ../events
+	github.com/hetacode/heta-ci/commons => ../commons
 )

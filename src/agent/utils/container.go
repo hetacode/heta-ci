@@ -27,6 +27,7 @@ const (
 	ScriptsDir   = "/scripts"
 	ArtifactsDir = "/artifacts"
 	JobDir       = "/job"
+	TasksDir     = "/tasks"
 )
 
 // NewContainer pull docker image, create container and run it
@@ -131,6 +132,15 @@ func (c *Container) CreateDir(path string) error {
 	attached, _ := c.client.ContainerAttach(context.Background(), c.piplineContainerID, types.ContainerAttachOptions{Stream: true, Stdin: true})
 	defer attached.Close()
 	attached.Conn.Write([]byte(fmt.Sprintf("mkdir %s\n", path)))
+
+	return nil
+}
+
+// RemoveDir inside container
+func (c *Container) RemoveDir(path string) error {
+	attached, _ := c.client.ContainerAttach(context.Background(), c.piplineContainerID, types.ContainerAttachOptions{Stream: true, Stdin: true})
+	defer attached.Close()
+	attached.Conn.Write([]byte(fmt.Sprintf("rm -rf %s\n", path)))
 
 	return nil
 }

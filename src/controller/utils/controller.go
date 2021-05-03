@@ -2,7 +2,9 @@ package utils
 
 import (
 	"log"
+	"os"
 	"sync"
+	"time"
 
 	"github.com/hetacode/heta-ci/structs"
 )
@@ -32,6 +34,10 @@ func NewController(addAgentCh, removeAgentCh chan *Agent) *Controller {
 	}
 	go c.agentsManager()
 
+	if err := os.Mkdir(PipelinesDir, 0777); err != nil {
+		log.Printf("start controller | warning: create %s directory failed | %s", PipelinesDir, err)
+	}
+
 	return c
 }
 
@@ -56,6 +62,7 @@ func (c *Controller) agentsManager() {
 
 	go func() {
 		for {
+			time.Sleep(100 * time.Millisecond)
 			if len(builds) > 0 {
 				wg.Wait()
 				wg.Add(1)
