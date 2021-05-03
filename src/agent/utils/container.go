@@ -136,6 +136,15 @@ func (c *Container) CreateDir(path string) error {
 	return nil
 }
 
+// RemoveDir inside container
+func (c *Container) RemoveDir(path string) error {
+	attached, _ := c.client.ContainerAttach(context.Background(), c.piplineContainerID, types.ContainerAttachOptions{Stream: true, Stdin: true})
+	defer attached.Close()
+	attached.Conn.Write([]byte(fmt.Sprintf("rm -rf %s\n", path)))
+
+	return nil
+}
+
 // Dispose container resources
 // Should be invoke with defer statement
 func (c *Container) Dispose() {
