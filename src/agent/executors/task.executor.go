@@ -104,7 +104,7 @@ func (p *TasksExecutor) executeTask(t *structs.Task, buildID, jobID string, c *u
 	// Prepare script file
 	uid, _ := uuid.GenerateUUID()
 	filename := uid + ".sh"
-	script := createTaskScriptAsBytes(t.Command)
+	script := createTaskScriptAsBytes(strings.Split(t.Command, "\n"))
 	f, err := os.Create(path.Join(scriptsDir, filename))
 	if err != nil {
 		return fmt.Errorf("execute task '%s' - create script err: %s", t.DisplayName, err)
