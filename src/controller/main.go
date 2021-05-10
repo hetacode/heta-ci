@@ -11,15 +11,25 @@ import (
 	goeh "github.com/hetacode/go-eh"
 	"github.com/hetacode/heta-ci/controller/eventhandlers"
 	"github.com/hetacode/heta-ci/controller/handlers"
+	"github.com/hetacode/heta-ci/controller/processors"
 	"github.com/hetacode/heta-ci/controller/utils"
 	"github.com/hetacode/heta-ci/events/agent"
-	proto "github.com/hetacode/heta-ci/proto"
+	"github.com/hetacode/heta-ci/proto"
 	"github.com/hetacode/heta-ci/structs"
 	"google.golang.org/grpc"
 	"gopkg.in/yaml.v2"
 )
 
 func main() {
+
+	// TODO: for tests
+	rp := &processors.RepositoryProcessor{}
+	r := prepareRepositories()
+	for _, i := range r {
+		rp.Process(i)
+	}
+	// ############
+
 	addAgentCh := make(chan *utils.Agent)
 	removeAgentCh := make(chan *utils.Agent)
 
@@ -67,6 +77,14 @@ func registerEventHandlers(c *utils.Controller) *goeh.EventsHandlerManager {
 	ehm.Register(new(agent.JobFinishedEvent), &eventhandlers.JobFinishedEventHandler{Controller: c})
 
 	return ehm
+}
+
+func prepareRepositories() []utils.Repository {
+	repos := []utils.Repository{
+		{Url: "https://github.com/hetacode/heta-ci-test-example.git", DefaultBranch: "master"},
+	}
+
+	return repos
 }
 
 func preparePipeline() *structs.Pipeline {
