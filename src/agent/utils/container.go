@@ -24,10 +24,10 @@ type Container struct {
 }
 
 const (
-	ScriptsDir   = "/scripts"
-	ArtifactsDir = "/artifacts"
-	JobDir       = "/job"
-	TasksDir     = "/tasks"
+	ContainerScriptsDir   = "/scripts"
+	ContainerArtifactsDir = "/artifacts"
+	ContainerJobDir       = "/job"
+	ContainerTasksDir     = "/tasks"
 )
 
 // NewContainer pull docker image, create container and run it
@@ -59,19 +59,19 @@ func NewContainer(image string, scriptsAgentDir, artifactsAgentDir string) *Cont
 			OpenStdin:    true,
 			AttachStdout: true,
 			Cmd:          []string{"/bin/sh"},
-			WorkingDir:   JobDir,
+			WorkingDir:   ContainerJobDir,
 		},
 		&container.HostConfig{
 			Mounts: []mount.Mount{
 				{
 					Type:   mount.TypeBind,
 					Source: artifactsAgentDir,
-					Target: ArtifactsDir,
+					Target: ContainerArtifactsDir,
 				},
 				{
 					Type:   mount.TypeBind,
 					Source: scriptsAgentDir,
-					Target: ScriptsDir,
+					Target: ContainerScriptsDir,
 				},
 			},
 		},
@@ -103,7 +103,7 @@ func NewContainer(image string, scriptsAgentDir, artifactsAgentDir string) *Cont
 // ExecuteScript inside container
 // Script is lying on the host directory which is mounted via volume
 func (c *Container) ExecuteScript(scriptName string, environments []string) (string, error) {
-	scriptPath := ScriptsDir + "/" + scriptName
+	scriptPath := ContainerScriptsDir + "/" + scriptName
 
 	config := types.ExecConfig{
 		Detach:       false,

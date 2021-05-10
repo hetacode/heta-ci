@@ -73,8 +73,8 @@ func (e *JobExecutor) Execute() {
 	c := utils.NewContainer(e.job.Runner, e.app.ScriptsHostDir, e.app.ArtifactsHostDir)
 	defer c.Dispose()
 
-	c.CreateDir(utils.TasksDir)
-	defer c.RemoveDir(utils.ArtifactsDir)
+	c.CreateDir(utils.ContainerTasksDir)
+	defer c.RemoveDir(utils.ContainerArtifactsDir)
 
 	te := NewTasksExecutor(e.app, e.pipelineEnvironments, e.pipelineTriggers, c, e.logger, e.job.Tasks, e.buildID, e.job.ID, e.app.ScriptsHostDir, e.isConditional)
 	if err := te.Execute(); err == nil {
