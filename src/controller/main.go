@@ -4,7 +4,6 @@ import (
 	"log"
 	"net"
 	"net/http"
-	"os"
 	"time"
 
 	"github.com/gorilla/mux"
@@ -15,19 +14,13 @@ import (
 	"github.com/hetacode/heta-ci/controller/utils"
 	"github.com/hetacode/heta-ci/events/agent"
 	"github.com/hetacode/heta-ci/proto"
-	"github.com/hetacode/heta-ci/structs"
 	"google.golang.org/grpc"
-	"gopkg.in/yaml.v2"
 )
 
 func main() {
 
 	// TODO: for tests
-	rp := &processors.RepositoryProcessor{}
-	r := prepareRepositories()
-	for _, i := range r {
-		rp.Process(i)
-	}
+
 	// ############
 
 	addAgentCh := make(chan *utils.Agent)
@@ -36,7 +29,15 @@ func main() {
 	c := utils.NewController(addAgentCh, removeAgentCh)
 	ehm := registerEventHandlers(c)
 
-	c.AddPipeline(preparePipeline())
+	rp := &processors.RepositoryProcessor{
+		Controller: c,
+	}
+	r := prepareRepositories()
+	for _, i := range r {
+		if err := rp.Process(i); err != nil {
+			log.Printf("process repository err: %s", err)
+		}
+	}
 
 	go initRestApi(c)
 	lis, err := net.Listen("tcp", ":5000")
@@ -87,108 +88,108 @@ func prepareRepositories() []utils.Repository {
 	return repos
 }
 
-func preparePipeline() *structs.Pipeline {
-	b, err := os.ReadFile(".heta-ci/pipeline.yaml")
-	if err != nil {
-		log.Fatal(err)
-	}
+// func preparePipeline() *structs.Pipeline {
+// 	b, err := os.ReadFile(".heta-ci/pipeline.yaml")
+// 	if err != nil {
+// 		log.Fatal(err)
+// 	}
 
-	var pipeline *structs.Pipeline
-	if err := yaml.Unmarshal(b, &pipeline); err != nil {
-		log.Fatal(err)
-	}
+// 	var pipeline *structs.Pipeline
+// 	if err := yaml.Unmarshal(b, &pipeline); err != nil {
+// 		log.Fatal(err)
+// 	}
 
-	return pipeline
-	// // pipeline := &structs.Pipeline{
-	// // 	Name: "Test shell scripts in one container",
-	// // 	Jobs: []structs.Job{
-	// // 		{
-	// // 			ID:          "test_alpine",
-	// // 			DisplayName: "Alpine runner",
-	// // 			Runner:      "alpine",
-	// // 			Tasks: []structs.Task{
-	// // 				{
-	// // 					ID:          "correct_ls",
-	// // 					DisplayName: "Correct script - ls dir",
-	// // 					Command: []string{
-	// // 						"echo Start",
-	// // 						"uname -a >> $AGENT_TASKS_DIR/uname.txt",
-	// // 						"echo End",
-	// // 					},
-	// // 				},
-	// // 				{
-	// // 					ID:          "correct_env",
-	// // 					DisplayName: "Correct script - env",
-	// // 					Command: []string{
-	// // 						"echo Start",
-	// // 						"echo job artifacts IN dir: $AGENT_JOB_ARTIFACTS_IN_DIR",
-	// // 						"echo job artifacts OUT dir: $AGENT_JOB_ARTIFACTS_OUT_DIR",
-	// // 						"echo job tasks dir: $AGENT_TASKS_DIR",
-	// // 						"echo scripts dir: $AGENT_SCRIPTS_DIR",
-	// // 						"echo End",
-	// // 					},
-	// // 				},
-	// // 				{
-	// // 					ID:          "read_uname_file",
-	// // 					DisplayName: "Read the file with uname saved value",
-	// // 					Command: []string{
-	// // 						"echo Start",
-	// // 						"cat $AGENT_TASKS_DIR/uname.txt",
-	// // 						"mkdir $AGENT_JOB_ARTIFACTS_OUT_DIR/test",
-	// // 						"echo 'lorem ipsum' >>  $AGENT_JOB_ARTIFACTS_OUT_DIR/test/lorem.txt",
-	// // 						"cp $AGENT_TASKS_DIR/uname.txt $AGENT_JOB_ARTIFACTS_OUT_DIR/",
-	// // 						"echo end",
-	// // 					},
-	// // 				},
-	// // 			},
-	// // 		},
-	// // 		{
-	// // 			ID:          "test_busybox",
-	// // 			DisplayName: "Busybox runner",
-	// // 			Runner:      "busybox",
-	// // 			Tasks: []structs.Task{
-	// // 				{
-	// // 					ID:          "correct",
-	// // 					DisplayName: "Correct script",
-	// // 					Command: []string{
-	// // 						"echo Start",
-	// // 						"ls -la $AGENT_JOB_ARTIFACTS_IN_DIR/",
-	// // 						"cp -r $AGENT_JOB_ARTIFACTS_IN_DIR/* $AGENT_TASKS_DIR/",
-	// // 						"echo End",
-	// // 					},
-	// // 				},
-	// // 				{
-	// // 					ID:          "correct",
-	// // 					DisplayName: "Read uname file",
-	// // 					Command: []string{
-	// // 						"echo Start",
-	// // 						"cat $AGENT_TASKS_DIR/uname.txt",
-	// // 						"echo End",
-	// // 					},
-	// // 				},
-	// // 			},
-	// // 		},
-	// // 		// {
-	// // 		// 	ID:          "when_test_busybox_failed",
-	// // 		// 	DisplayName: "Run conditionaly after test busybox failed",
-	// // 		// 	Runner:      "ubuntu:20.10",
-	// // 		// 	Conditons: []structs.Conditon{
-	// // 		// 		{
-	// // 		// 			Type: structs.OnFailure,
-	// // 		// 			On:   "test_busybox",
-	// // 		// 		},
-	// // 		// 	},
-	// // 		// 	Tasks: []structs.Task{
-	// // 		// 		{
-	// // 		// 			ID:          "message",
-	// // 		// 			DisplayName: "Message task for job 2",
-	// // 		// 			Command: []string{
-	// // 		// 				"apt update && apt install -y figlet",
-	// // 		// 				"figlet \"Don't worry!\"",
-	// // 		// 			},
-	// // 		// 		},
-	// // 		// 	},
-	// // 		// },
-	// // 	},
-	// }
-}
+// 	return pipeline
+// // pipeline := &structs.Pipeline{
+// // 	Name: "Test shell scripts in one container",
+// // 	Jobs: []structs.Job{
+// // 		{
+// // 			ID:          "test_alpine",
+// // 			DisplayName: "Alpine runner",
+// // 			Runner:      "alpine",
+// // 			Tasks: []structs.Task{
+// // 				{
+// // 					ID:          "correct_ls",
+// // 					DisplayName: "Correct script - ls dir",
+// // 					Command: []string{
+// // 						"echo Start",
+// // 						"uname -a >> $AGENT_TASKS_DIR/uname.txt",
+// // 						"echo End",
+// // 					},
+// // 				},
+// // 				{
+// // 					ID:          "correct_env",
+// // 					DisplayName: "Correct script - env",
+// // 					Command: []string{
+// // 						"echo Start",
+// // 						"echo job artifacts IN dir: $AGENT_JOB_ARTIFACTS_IN_DIR",
+// // 						"echo job artifacts OUT dir: $AGENT_JOB_ARTIFACTS_OUT_DIR",
+// // 						"echo job tasks dir: $AGENT_TASKS_DIR",
+// // 						"echo scripts dir: $AGENT_SCRIPTS_DIR",
+// // 						"echo End",
+// // 					},
+// // 				},
+// // 				{
+// // 					ID:          "read_uname_file",
+// // 					DisplayName: "Read the file with uname saved value",
+// // 					Command: []string{
+// // 						"echo Start",
+// // 						"cat $AGENT_TASKS_DIR/uname.txt",
+// // 						"mkdir $AGENT_JOB_ARTIFACTS_OUT_DIR/test",
+// // 						"echo 'lorem ipsum' >>  $AGENT_JOB_ARTIFACTS_OUT_DIR/test/lorem.txt",
+// // 						"cp $AGENT_TASKS_DIR/uname.txt $AGENT_JOB_ARTIFACTS_OUT_DIR/",
+// // 						"echo end",
+// // 					},
+// // 				},
+// // 			},
+// // 		},
+// // 		{
+// // 			ID:          "test_busybox",
+// // 			DisplayName: "Busybox runner",
+// // 			Runner:      "busybox",
+// // 			Tasks: []structs.Task{
+// // 				{
+// // 					ID:          "correct",
+// // 					DisplayName: "Correct script",
+// // 					Command: []string{
+// // 						"echo Start",
+// // 						"ls -la $AGENT_JOB_ARTIFACTS_IN_DIR/",
+// // 						"cp -r $AGENT_JOB_ARTIFACTS_IN_DIR/* $AGENT_TASKS_DIR/",
+// // 						"echo End",
+// // 					},
+// // 				},
+// // 				{
+// // 					ID:          "correct",
+// // 					DisplayName: "Read uname file",
+// // 					Command: []string{
+// // 						"echo Start",
+// // 						"cat $AGENT_TASKS_DIR/uname.txt",
+// // 						"echo End",
+// // 					},
+// // 				},
+// // 			},
+// // 		},
+// // 		// {
+// // 		// 	ID:          "when_test_busybox_failed",
+// // 		// 	DisplayName: "Run conditionaly after test busybox failed",
+// // 		// 	Runner:      "ubuntu:20.10",
+// // 		// 	Conditons: []structs.Conditon{
+// // 		// 		{
+// // 		// 			Type: structs.OnFailure,
+// // 		// 			On:   "test_busybox",
+// // 		// 		},
+// // 		// 	},
+// // 		// 	Tasks: []structs.Task{
+// // 		// 		{
+// // 		// 			ID:          "message",
+// // 		// 			DisplayName: "Message task for job 2",
+// // 		// 			Command: []string{
+// // 		// 				"apt update && apt install -y figlet",
+// // 		// 				"figlet \"Don't worry!\"",
+// // 		// 			},
+// // 		// 		},
+// // 		// 	},
+// // 		// },
+// // 	},
+// }
+// }
