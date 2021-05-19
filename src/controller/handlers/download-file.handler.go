@@ -27,7 +27,7 @@ func (h *Handlers) DownloadFileHandler(w http.ResponseWriter, r *http.Request) {
 	var err error
 	switch category {
 	case RepoFileCategory:
-		b = h.prepareAndGetCodeRepository(buildID)
+		b, err = h.prepareAndGetCodeRepository(buildID)
 	case ArtifactsFileCategory:
 		b, err = h.prepareAndGetArtifacts(build)
 	}
@@ -44,8 +44,17 @@ func (h *Handlers) DownloadFileHandler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func (h *Handlers) prepareAndGetCodeRepository(buildID string) []byte {
-	return []byte("test prepareAndGetCodeRepository")
+func (h *Handlers) prepareAndGetCodeRepository(buildID string) ([]byte, error) {
+	build, exist := h.Controller.Builds[buildID]
+	if !exist {
+		return nil, fmt.Errorf("build %s doesn't exists", buildID)
+	}
+	bytes, err := os.ReadFile(build.RepositoryArchivePath)
+	if err != nil {
+		return nil, fmt.Errorf("get repository archive file failed %s", err)
+	}
+
+	return bytes, nil
 }
 
 func (h *Handlers) prepareAndGetArtifacts(build *utils.PipelineBuild) ([]byte, error) {

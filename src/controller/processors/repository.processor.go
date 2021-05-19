@@ -19,11 +19,8 @@ type RepositoryProcessor struct {
 }
 
 func (p *RepositoryProcessor) Process(repo utils.Repository) error {
-	// TODO:
-	// 2. archive repo
-
-	processingID, _ := uuid.GenerateUUID()
-	repoPath := path.Join("repos", processingID)
+	repositoryID, _ := uuid.GenerateUUID()
+	repoPath := path.Join(utils.RepositoryDirectory, repositoryID)
 	if err := cloneRepo(&repo, repoPath); err != nil {
 		return err
 	}
@@ -34,18 +31,20 @@ func (p *RepositoryProcessor) Process(repo utils.Repository) error {
 		return fmt.Errorf("archive repo failed %s", err)
 	}
 
-	os.WriteFile(fmt.Sprintf("repos/%s.zip", processingID), repoBytes, 0777)
+	os.WriteFile(fmt.Sprintf("%s/%s.zip", utils.RepositoryDirectory, repositoryID), repoBytes, 0777)
 
-	pipeline, err := createPipeline(repoPath)
+	pipeline, err := createPipeline(repoPath, repositoryID)
 	if err != nil {
 		return err
 	}
+	pipeline.RepositoryID = repositoryID
+
 	p.Controller.AddPipeline(pipeline)
 
 	return nil
 }
 
-func createPipeline(repoPath string) (*structs.Pipeline, error) {
+func createPipeline(repoPath, repositoryID string) (*structs.Pipeline, error) {
 	b, err := os.ReadFile(path.Join(repoPath, ".heta-ci/pipeline.yaml"))
 	if err != nil {
 		return nil, fmt.Errorf("read pipeline config file failed %s", err)

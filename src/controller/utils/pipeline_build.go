@@ -20,12 +20,6 @@ const (
 	PipelineStatusWorking                = "working"
 )
 
-const (
-	PipelinesDir = "pipelines"
-	ArtifactsDir = "artifacts"
-	CodeDir      = "code"
-)
-
 type PipelineBuild struct {
 	ID         string
 	CommitHash string
@@ -34,8 +28,8 @@ type PipelineBuild struct {
 	Agent      *Agent
 	Triggers   *PipelineTriggers
 
-	ArtifactsDir string
-	CodeDir      string
+	RepositoryArchivePath string
+	ArtifactsDir          string
 
 	LogChan           chan string
 	ErrLogChan        chan string
@@ -49,13 +43,14 @@ func NewPipelineBuild(p *structs.Pipeline, askAgentCh chan string) *PipelineBuil
 
 	uid, _ := uuid.GenerateUUID()
 	w := &PipelineBuild{
-		ID:                uid,
-		Pipeline:          p,
-		LogChan:           logCh,
-		ErrLogChan:        errLogCh,
-		AgentResponseChan: make(chan *Agent),
-		askAgentChan:      askAgentCh,
-		Triggers:          NewPipelineTriggers(),
+		ID:                    uid,
+		Pipeline:              p,
+		LogChan:               logCh,
+		ErrLogChan:            errLogCh,
+		AgentResponseChan:     make(chan *Agent),
+		askAgentChan:          askAgentCh,
+		Triggers:              NewPipelineTriggers(),
+		RepositoryArchivePath: path.Join(RepositoryDirectory, p.RepositoryID, ".zip"),
 	}
 
 	go w.logs()
@@ -68,8 +63,6 @@ func (w *PipelineBuild) Run() {
 	w.Triggers.RegisterJobsFor(w.Pipeline)
 
 	// TODO:
-	// 2. archive whole repo
-	// 3. expose archive via api
 	// 8. on finish pipeline (or any error) all resources should be cleaned up (like pipeline directory)
 
 	if err := w.initBuildDirs(w.ID); err != nil {
@@ -132,7 +125,6 @@ func (b *PipelineBuild) logs() {
 func (b *PipelineBuild) initBuildDirs(pipelineID string) error {
 	pipelineDir := path.Join(PipelinesDir, pipelineID)
 	artifactsDir := path.Join(pipelineDir, ArtifactsDir)
-	codeCheckoutDir := path.Join(pipelineDir, CodeDir)
 
 	if err := os.Mkdir(pipelineDir, 0777); err != nil {
 		return fmt.Errorf("start pipeline build | create %s dir failed | err: %s", pipelineDir, err)
@@ -140,11 +132,7 @@ func (b *PipelineBuild) initBuildDirs(pipelineID string) error {
 	if err := os.Mkdir(artifactsDir, 0777); err != nil {
 		return fmt.Errorf("start pipeline build | create %s dir failed | err: %s", pipelineDir, err)
 	}
-	if err := os.Mkdir(codeCheckoutDir, 0777); err != nil {
-		return fmt.Errorf("start pipeline build | create %s dir failed | err: %s", pipelineDir, err)
-	}
 
-	b.CodeDir = codeCheckoutDir
 	b.ArtifactsDir = artifactsDir
 
 	return nil

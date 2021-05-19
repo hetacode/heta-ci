@@ -1,30 +1,31 @@
 package structs
 
 type Pipeline struct {
-	Name string `yaml:"name"`
-	Jobs []Job  `yaml:"jobs"`
+	RepositoryID string `json:"repository_id"`
+	Name         string `yaml:"name"`
+	Jobs         []Job  `yaml:"jobs"`
 }
 
 type Job struct {
-	ID          string     `yaml:"id",json:"id"` // unique name on jobs level - no whitespaces, no special chars
-	DisplayName string     `yaml:"display_name",json:"name"`
-	Runner      string     `yaml:"runner",json:"runner"`
-	Tasks       []Task     `yaml:"tasks",json:"tasks"`
-	Conditons   []Conditon `yaml:"conditions",json:"conditions"`
+	ID          string     `yaml:"id" json:"id"` // unique name on jobs level - no whitespaces, no special chars
+	DisplayName string     `yaml:"display_name" json:"name"`
+	Runner      string     `yaml:"runner" json:"runner"`
+	Tasks       []Task     `yaml:"tasks" json:"tasks"`
+	Conditons   []Conditon `yaml:"conditions" json:"conditions"`
 }
 
 type Task struct {
-	ID          string     `yaml:"id",json:"id"` // unique name on tasks level - no whitespaces, no special chars
-	DisplayName string     `yaml:"display_name",json:"name"`
-	Command     string     `yaml:"command",json:"command"` // one or more
-	Conditons   []Conditon `yaml:"conditions",json:"conditions"`
+	ID          string     `yaml:"id" json:"id"` // unique name on tasks level - no whitespaces, no special chars
+	DisplayName string     `yaml:"display_name" json:"name"`
+	Command     string     `yaml:"command" json:"command"` // one or more
+	Conditons   []Conditon `yaml:"conditions" json:"conditions"`
 }
 
 type Conditon struct {
 	// when run
-	Type ConditionType `yaml:"type",json:"type"`
+	Type ConditionType `yaml:"type" json:"type"`
 	// which job/task should trigger this condition "owner"
-	On string `yaml:"on",json:"on"`
+	On string `yaml:"on" json:"on"`
 }
 
 type ConditionType string
