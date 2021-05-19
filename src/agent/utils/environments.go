@@ -8,6 +8,7 @@ import (
 )
 
 const (
+	AgentCodeDirEnvName            = "AGENT_CODE_DIR"              // directory where exists downloaded source code of build pipeline
 	AgentScriptsDirEnvName         = "AGENT_SCRIPTS_DIR"           // directory where lands tasks commands scripts
 	AgentJobArtifactsInDirEnvName  = "AGENT_JOB_ARTIFACTS_IN_DIR"  // directory where land downloaded artifacts
 	AgentJobArtifactsOutDirEnvName = "AGENT_JOB_ARTIFACTS_OUT_DIR" // directory where task can put files that will were upload to the controller at the end of job
@@ -27,6 +28,7 @@ type PipelineEnvironments struct {
 func NewPipelineEnvironments(scriptsDir, jobArtifactsDir string) *PipelineEnvironments {
 	p := &PipelineEnvironments{
 		Env: map[string]string{
+			AgentCodeDirEnvName:            ContainerCodeDir,
 			AgentScriptsDirEnvName:         ContainerScriptsDir,
 			AgentJobArtifactsInDirEnvName:  path.Join(ContainerArtifactsDir, "in"),
 			AgentJobArtifactsOutDirEnvName: path.Join(ContainerArtifactsDir, "out"),
