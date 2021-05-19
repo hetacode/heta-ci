@@ -65,12 +65,17 @@ func (e *JobExecutor) Execute() {
 	}
 	e.pipelineEnvironments.SetCurrent(e.pipelineID, e.job.DisplayName)
 
+	if err := e.downloadAndExtractRepositoryPackage(); err != nil {
+		e.logger.ReturnError(1, e.buildID, e.job.ID, err.Error(), e.isConditional)
+		return
+	}
+
 	if err := e.downloadAndExtractArtifactsPackage(); err != nil {
 		e.logger.ReturnError(1, e.buildID, e.job.ID, err.Error(), e.isConditional)
 		return
 	}
 
-	c := utils.NewContainer(e.job.Runner, e.app.ScriptsHostDir, e.app.ArtifactsHostDir)
+	c := utils.NewContainer(e.job.Runner, e.app.ScriptsHostDir, e.app.ArtifactsHostDir, e.app.CodeHostDir)
 	defer c.Dispose()
 
 	c.CreateDir(utils.ContainerTasksDir)
@@ -90,6 +95,18 @@ func (e *JobExecutor) Execute() {
 		e.logger.ReturnError(1, e.buildID, e.job.ID, err.Error(), e.isConditional)
 	}
 
+}
+
+func (j *JobExecutor) downloadAndExtractRepositoryPackage() error {
+	bytes, err := j.app.RepositoryService.DownloadRepositoryPackage(j.buildID)
+	if err != nil {
+		return fmt.Errorf("start job | download code repository failed | err: %s", err)
+	}
+	if err := commons.ExtractDirectory(bytes, j.app.CodeHostDir); err != nil {
+		return fmt.Errorf("start job | extract code file failed | err: %s", err)
+	}
+
+	return nil
 }
 
 func (j *JobExecutor) downloadAndExtractArtifactsPackage() error {
@@ -144,6 +161,10 @@ func (e *JobExecutor) createInitDirs() error {
 
 	if err := os.MkdirAll(e.app.ArtifactsHostOutDir, os.ModePerm); err != nil {
 		return fmt.Errorf("create artifacts out temp directory err: %s", err)
+	}
+
+	if err := os.MkdirAll(e.app.CodeHostDir, os.ModePerm); err != nil {
+		return fmt.Errorf("create code temp directory err: %s", err)
 	}
 
 	return nil

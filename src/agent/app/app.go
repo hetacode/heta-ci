@@ -17,8 +17,12 @@ type App struct {
 	ArtifactsHostDir     string
 	ArtifactsHostInDir   string
 	ArtifactsHostOutDir  string
+	CodeHostDir          string
 	ArtifactsService     *services.ArtifactsService
+	RepositoryService    *services.RepositoryService
 }
+
+const controllerEndpoint = "http://localhost:5080"
 
 func NewApp() *App {
 	pwd, _ := os.Getwd()
@@ -26,8 +30,10 @@ func NewApp() *App {
 	return &App{
 		Config:               utils.NewConfig(),
 		EventsHandlerManager: goeh.NewEventsHandlerManager(),
-		ArtifactsService:     services.NewArtifactsService("http://localhost:5080"),
+		ArtifactsService:     services.NewArtifactsService(controllerEndpoint),
+		RepositoryService:    services.NewRepositoryService(controllerEndpoint),
 		ScriptsHostDir:       pwd + "/scripts",
+		CodeHostDir:          pwd + "/code",
 		ArtifactsHostDir:     pwd + "/artifacts",
 		ArtifactsHostInDir:   pwd + "/artifacts/in",
 		ArtifactsHostOutDir:  pwd + "/artifacts/out",
