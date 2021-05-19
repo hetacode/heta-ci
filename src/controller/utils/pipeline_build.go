@@ -50,7 +50,7 @@ func NewPipelineBuild(p *structs.Pipeline, askAgentCh chan string) *PipelineBuil
 		AgentResponseChan:     make(chan *Agent),
 		askAgentChan:          askAgentCh,
 		Triggers:              NewPipelineTriggers(),
-		RepositoryArchivePath: path.Join(RepositoryDirectory, p.RepositoryID, ".zip"),
+		RepositoryArchivePath: path.Join(RepositoryDirectory, p.RepositoryID+".zip"),
 	}
 
 	go w.logs()

@@ -28,10 +28,11 @@ const (
 	ContainerArtifactsDir = "/artifacts"
 	ContainerJobDir       = "/job"
 	ContainerTasksDir     = "/tasks"
+	ContainerCodeDir      = "/code"
 )
 
 // NewContainer pull docker image, create container and run it
-func NewContainer(image string, scriptsAgentDir, artifactsAgentDir string) *Container {
+func NewContainer(image string, scriptsAgentDir, artifactsAgentDir, codeAgentDir string) *Container {
 	ctx := context.Background()
 	client, err := client.NewClientWithOpts()
 	if err != nil {
@@ -72,6 +73,11 @@ func NewContainer(image string, scriptsAgentDir, artifactsAgentDir string) *Cont
 					Type:   mount.TypeBind,
 					Source: scriptsAgentDir,
 					Target: ContainerScriptsDir,
+				},
+				{
+					Type:   mount.TypeBind,
+					Source: codeAgentDir,
+					Target: ContainerCodeDir,
 				},
 			},
 		},
