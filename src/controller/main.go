@@ -10,6 +10,7 @@ import (
 	goeh "github.com/hetacode/go-eh"
 	"github.com/hetacode/heta-ci/controller/eventhandlers"
 	"github.com/hetacode/heta-ci/controller/handlers"
+	"github.com/hetacode/heta-ci/controller/jobs"
 	"github.com/hetacode/heta-ci/controller/processors"
 	"github.com/hetacode/heta-ci/controller/utils"
 	"github.com/hetacode/heta-ci/events/agent"
@@ -38,6 +39,11 @@ func main() {
 			log.Printf("process repository err: %s", err)
 		}
 	}
+	c.Repositories = r
+
+	// TODO: for test
+	rj := jobs.NewRepositoryPeriodicJob(time.Minute, c)
+	rj.Run()
 
 	go initRestApi(c)
 	lis, err := net.Listen("tcp", ":5000")

@@ -10,9 +10,10 @@ import (
 )
 
 type Controller struct {
-	Builds    map[string]*PipelineBuild
-	pipelines []*structs.Pipeline
-	agents    []*Agent // list of free agents
+	Repositories []Repository
+	Builds       map[string]*PipelineBuild
+	pipelines    []*structs.Pipeline
+	agents       []*Agent // list of free agents
 
 	ReturnAgentCh         chan *Agent            // after finished job agent back via channel
 	buildsAgentResponseCh map[string]chan *Agent // channels collection for each build - via these channels are sending free agents to execute jobs

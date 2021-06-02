@@ -4,7 +4,7 @@ type Pipeline struct {
 	RepositoryID string  `json:"repository_id"`
 	Name         string  `yaml:"name"`
 	Jobs         []Job   `yaml:"jobs"`
-	RunOn        []RunOn `ymal:"run_on"` // determine conditions when build should run
+	RunOn        []RunOn `yaml:"run_on"` // determine conditions when build should run
 }
 
 type Job struct {
