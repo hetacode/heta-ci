@@ -11,6 +11,15 @@ import (
 	"strings"
 )
 
+type FileDataIter interface {
+	ForEach(func(file *FileData) error) error
+}
+
+type FileData struct {
+	Reader io.Reader
+	Path   string
+}
+
 // TODO: add unit tests
 
 func ExtractDirectory(artifactsBytes []byte, dirPath string) error {
@@ -49,6 +58,33 @@ func ExtractDirectory(artifactsBytes []byte, dirPath string) error {
 	}
 
 	return nil
+}
+
+func ArchiveFiles(iter FileDataIter) ([]byte, error) {
+	var buf bytes.Buffer
+
+	zipWriter := zip.NewWriter(&buf)
+	err := iter.ForEach(func(file *FileData) error {
+		zipFile, err := zipWriter.Create(file.Path)
+		if err != nil {
+			return fmt.Errorf("zipWriter.Create err:  %s", err)
+		}
+		_, err = io.Copy(zipFile, file.Reader)
+		if err != nil {
+			return fmt.Errorf("io.Copy zipFile file.Reader err %s", err)
+		}
+
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	if err = zipWriter.Close(); err != nil {
+		return nil, err
+	}
+
+	return buf.Bytes(), nil
 }
 
 func ArchiveDirectory(path string) ([]byte, error) {

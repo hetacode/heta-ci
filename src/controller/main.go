@@ -1,6 +1,8 @@
 package main
 
 import (
+	"crypto/sha256"
+	"encoding/hex"
 	"log"
 	"net"
 	"net/http"
@@ -86,9 +88,14 @@ func registerEventHandlers(c *utils.Controller) *goeh.EventsHandlerManager {
 	return ehm
 }
 
+// TODO: temporary function
+// that should be fetch from DB
 func prepareRepositories() []utils.Repository {
+	repo := "https://github.com/hetacode/heta-ci-test-example.git"
+	sha := sha256.New()
+	sha.Write([]byte(repo))
 	repos := []utils.Repository{
-		{Url: "https://github.com/hetacode/heta-ci-test-example.git", DefaultBranch: "master"},
+		{ID: hex.EncodeToString(sha.Sum(nil)), Url: repo, DefaultBranch: "master"},
 	}
 
 	return repos

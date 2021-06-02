@@ -1,10 +1,10 @@
 package structs
 
 type Pipeline struct {
-	RepositoryID string  `json:"repository_id"`
-	Name         string  `yaml:"name"`
-	Jobs         []Job   `yaml:"jobs"`
-	RunOn        []RunOn `yaml:"run_on"` // determine conditions when build should run
+	RepositoryArchiveID string  `json:"repository_archive_id"`
+	Name                string  `yaml:"name"`
+	Jobs                []Job   `yaml:"jobs"`
+	RunOn               []RunOn `yaml:"run_on"` // determine conditions when build should run
 }
 
 type Job struct {

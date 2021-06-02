@@ -3,12 +3,17 @@ package jobs
 import (
 	"fmt"
 	"log"
+	"os"
 	"regexp"
+	"strings"
 	"time"
 
 	"github.com/go-git/go-git/v5"
 	"github.com/go-git/go-git/v5/plumbing"
+	"github.com/go-git/go-git/v5/plumbing/object"
 	"github.com/go-git/go-git/v5/storage/memory"
+	"github.com/hashicorp/go-uuid"
+	"github.com/hetacode/heta-ci/commons"
 	"github.com/hetacode/heta-ci/controller/utils"
 	"github.com/hetacode/heta-ci/structs"
 	"gopkg.in/yaml.v2"
@@ -95,25 +100,92 @@ func (j *RepositoryPeriodicJob) Run() {
 			}
 			return nil
 		})
-		for _, r := range pipeline.RunOn {
-			switch r.Type {
+		for _, ro := range pipeline.RunOn {
+			switch ro.Type {
 			case structs.RunOnBranch:
-				findAndRunBranches(r.On, branches)
+				j.findAndRunBranches(pipeline, &r, ro.On, branches)
 			}
 		}
 	}
 }
 
-func findAndRunBranches(runOnPattern string, branches []string) error {
+func (j *RepositoryPeriodicJob) findAndRunBranches(pipeline *structs.Pipeline, repository *utils.Repository, runOnPattern string, branches []string) error {
 	checkPattern := regexp.MustCompile(runOnPattern)
 	for _, b := range branches {
 		correctPattern := checkPattern.MatchString(b)
-		fmt.Printf("check '%s' pattern: %s - %t \n", runOnPattern, b, correctPattern)
+		fmt.Printf("repoID: %s check '%s' pattern: %s - %t \n", repository.ID, runOnPattern, b, correctPattern)
 		if correctPattern {
 			// TODO: run build
 			// build should check last processed commit and run newest version of code
+			if err := j.prepareBuildPipeline(pipeline, repository, structs.RunOnBranch, b); err != nil {
+				fmt.Printf("prepareBuildPipeline err %s\n", err)
+			}
+
 		}
 	}
 
 	return nil
+}
+
+func (j *RepositoryPeriodicJob) prepareBuildPipeline(pipeline *structs.Pipeline, repository *utils.Repository, runOnType structs.RunOnType, runOnValue string) error {
+	// TODO: fetch repo and check commits diffs
+	var repoBytes []byte
+	lastCommit := j.controller.BuildLastCommits.Get(repository.ID, runOnType, runOnValue)
+	if lastCommit == nil {
+		rc, err := git.Clone(memory.NewStorage(), nil, &git.CloneOptions{
+			URL:           repository.Url,
+			ReferenceName: plumbing.NewBranchReferenceName(strings.TrimPrefix(runOnValue, "origin/")),
+		})
+		if err != nil {
+			return fmt.Errorf("repo %s clone branch %s failed %s", repository.Url, runOnValue, err)
+		}
+		ref, _ := rc.Head()
+		commit, _ := rc.CommitObject(ref.Hash())
+		tree, err := commit.Tree()
+		if err != nil {
+			return fmt.Errorf("get repo tree failed %s", err)
+		}
+
+		convertIter := &convertGitFileIterToZipFileIter{
+			iter: tree.Files(),
+		}
+
+		repoBytes, err = commons.ArchiveFiles(convertIter)
+		if err != nil {
+			return fmt.Errorf("archive repo failed %s", err)
+		}
+	} else {
+		panic("prepareBuildPipeline - unimplemented diffs flow")
+	}
+	repositoryArchiveID, _ := uuid.GenerateUUID()
+	pipeline.RepositoryArchiveID = repositoryArchiveID
+	filePath := fmt.Sprintf("%s/%s.zip", utils.RepositoryDirectory, repositoryArchiveID)
+	os.WriteFile(filePath, repoBytes, 0777)
+	return nil
+	// w := utils.NewPipelineBuild(pipeline, j.controller.AskAgentCh)
+	// j.controller.RegisterBuild(w)
+	// w.Run()
+}
+
+type convertGitFileIterToZipFileIter struct {
+	iter *object.FileIter
+}
+
+func (c *convertGitFileIterToZipFileIter) ForEach(callback func(file *commons.FileData) error) error {
+	err := c.iter.ForEach(func(o *object.File) error {
+		r, err := o.Reader()
+		if err != nil {
+			return fmt.Errorf("file reader err %s", err)
+		}
+		data := &commons.FileData{
+			Path:   o.Name,
+			Reader: r,
+		}
+
+		if err := callback(data); err != nil {
+			return err
+		}
+		return nil
+	})
+	return err
 }

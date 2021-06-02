@@ -37,7 +37,7 @@ func (p *RepositoryProcessor) Process(repo utils.Repository) error {
 	if err != nil {
 		return err
 	}
-	pipeline.RepositoryID = repositoryID
+	pipeline.RepositoryArchiveID = repositoryID
 
 	p.Controller.AddPipeline(pipeline)
 

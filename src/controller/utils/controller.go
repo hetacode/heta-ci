@@ -10,14 +10,15 @@ import (
 )
 
 type Controller struct {
-	Repositories []Repository
-	Builds       map[string]*PipelineBuild
-	pipelines    []*structs.Pipeline
-	agents       []*Agent // list of free agents
+	Repositories     []Repository
+	Builds           map[string]*PipelineBuild
+	BuildLastCommits BuildLastCommits
+	pipelines        []*structs.Pipeline
+	agents           []*Agent // list of free agents
 
 	ReturnAgentCh         chan *Agent            // after finished job agent back via channel
+	AskAgentCh            chan string            // build id as parameter
 	buildsAgentResponseCh map[string]chan *Agent // channels collection for each build - via these channels are sending free agents to execute jobs
-	askAgentCh            chan string            // build id as parameter
 	addAgentCh            chan *Agent
 	removeAgentCh         chan *Agent
 }
@@ -25,10 +26,11 @@ type Controller struct {
 func NewController(addAgentCh, removeAgentCh chan *Agent) *Controller {
 	c := &Controller{
 		Builds:                make(map[string]*PipelineBuild),
+		BuildLastCommits:      make(BuildLastCommits),
 		pipelines:             make([]*structs.Pipeline, 0),
 		agents:                make([]*Agent, 0),
 		buildsAgentResponseCh: make(map[string]chan *Agent),
-		askAgentCh:            make(chan string),
+		AskAgentCh:            make(chan string),
 		ReturnAgentCh:         make(chan *Agent),
 		addAgentCh:            addAgentCh,
 		removeAgentCh:         removeAgentCh,
@@ -46,10 +48,15 @@ func (c *Controller) AddPipeline(p *structs.Pipeline) {
 	c.pipelines = append(c.pipelines, p)
 }
 
+func (c *Controller) RegisterBuild(build *PipelineBuild) {
+	c.Builds[build.ID] = build
+	c.buildsAgentResponseCh[build.ID] = build.AgentResponseChan
+}
+
 func (c *Controller) Execute() {
 	// TODO: a correct way - it should iterate through git repositories
 	for _, p := range c.pipelines {
-		w := NewPipelineBuild(p, c.askAgentCh)
+		w := NewPipelineBuild(p, c.AskAgentCh)
 		c.Builds[w.ID] = w
 		c.buildsAgentResponseCh[w.ID] = w.AgentResponseChan
 		w.Run()
@@ -82,7 +89,7 @@ func (c *Controller) agentsManager() {
 
 	for {
 		select {
-		case buildID := <-c.askAgentCh:
+		case buildID := <-c.AskAgentCh:
 			builds = append(builds, buildID)
 		case agent := <-c.addAgentCh:
 			wg.Wait()
