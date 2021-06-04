@@ -56,17 +56,6 @@ func (c *Controller) RegisterBuild(build *PipelineBuild) {
 	c.buildsAgentResponseCh[build.ID] = build.AgentResponseChan
 }
 
-func (c *Controller) Execute() {
-	// TODO: a correct way - it should iterate through git repositories
-	for _, p := range c.pipelines {
-		w := NewPipelineBuild(p, c.AskAgentCh)
-		c.Builds[w.ID] = w
-		c.buildsAgentResponseCh[w.ID] = w.AgentResponseChan
-		w.Run()
-	}
-
-}
-
 func (c *Controller) agentsManager() {
 	builds := make([]string, 0)
 	var wg sync.WaitGroup

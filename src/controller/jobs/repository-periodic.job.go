@@ -16,21 +16,22 @@ import (
 	"github.com/hetacode/heta-ci/commons"
 	"github.com/hetacode/heta-ci/controller/utils"
 	"github.com/hetacode/heta-ci/structs"
+	"github.com/robfig/cron/v3"
 	"gopkg.in/yaml.v2"
 )
 
 type RepositoryPeriodicJob struct {
 	controller *utils.Controller
 	lastRun    int64
-	interval   time.Duration
+	cron       string
 	isRunning  bool
 }
 
-func NewRepositoryPeriodicJob(interval time.Duration, ctrl *utils.Controller) *RepositoryPeriodicJob {
+func NewRepositoryPeriodicJob(cron string, ctrl *utils.Controller) *RepositoryPeriodicJob {
 	j := &RepositoryPeriodicJob{
 		controller: ctrl,
 		lastRun:    0,
-		interval:   interval,
+		cron:       cron,
 		isRunning:  false,
 	}
 
@@ -38,24 +39,20 @@ func NewRepositoryPeriodicJob(interval time.Duration, ctrl *utils.Controller) *R
 }
 
 func (j *RepositoryPeriodicJob) Init() {
-	go func() {
-		for {
-			time.Sleep(time.Second * 10)
-			period := time.Now().Unix() - j.interval.Milliseconds()
-			if j.lastRun < period {
-				continue
-			}
-			if j.isRunning {
-				continue
-			}
-
-			j.lastRun = time.Now().Unix()
-			j.Run()
+	j.lastRun = time.Now().Unix()
+	c := cron.New()
+	c.AddFunc(j.cron, func() {
+		if j.isRunning {
+			return
 		}
-	}()
+
+		j.lastRun = time.Now().Unix()
+		j.run()
+	})
+	c.Start()
 }
 
-func (j *RepositoryPeriodicJob) Run() {
+func (j *RepositoryPeriodicJob) run() {
 	for _, r := range j.controller.Repositories {
 		fmt.Printf("repo: %s default branch: %s \n", r.Url, r.DefaultBranch)
 		rc, err := git.Clone(memory.NewStorage(), nil, &git.CloneOptions{
@@ -175,6 +172,7 @@ func (j *RepositoryPeriodicJob) prepareBuildPipeline(pipeline *structs.Pipeline,
 			return nil // no changes
 		}
 
+		log.Printf("start job for: %s repo | %s branch | %s last hash | %s head hash", repository.Url, runOnValue, *lastCommit, ref.Hash().String())
 		repoBytes, err = j.archiveRepoAndSaveLastCommit(headTree, ref.Hash().String(), repository.ID, runOnType, runOnValue)
 		if err != nil {
 			return err

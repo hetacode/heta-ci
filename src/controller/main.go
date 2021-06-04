@@ -6,7 +6,6 @@ import (
 	"log"
 	"net"
 	"net/http"
-	"time"
 
 	"github.com/gorilla/mux"
 	goeh "github.com/hetacode/go-eh"
@@ -35,8 +34,8 @@ func main() {
 	c.Repositories = r
 
 	// TODO: for test
-	rj := jobs.NewRepositoryPeriodicJob(time.Minute, c)
-	rj.Run()
+	rj := jobs.NewRepositoryPeriodicJob("@every 1m", c)
+	rj.Init()
 
 	go initRestApi(c)
 	lis, err := net.Listen("tcp", ":5000")
@@ -46,12 +45,6 @@ func main() {
 	srv := grpc.NewServer()
 	cs := utils.NewCommunicationServer(ehm, addAgentCh, removeAgentCh)
 	proto.RegisterCommunicationServer(srv, cs)
-
-	// TEST PIPELINE EXECUTIONS
-	go func() {
-		time.Sleep(10 * time.Second)
-		c.Execute()
-	}()
 
 	err = srv.Serve(lis)
 	if err != nil {
