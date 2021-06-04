@@ -183,7 +183,9 @@ func (j *RepositoryPeriodicJob) prepareBuildPipeline(pipeline *structs.Pipeline,
 	repositoryArchiveID, _ := uuid.GenerateUUID()
 	pipeline.RepositoryArchiveID = repositoryArchiveID
 	filePath := fmt.Sprintf("%s/%s.zip", utils.RepositoryDirectory, repositoryArchiveID)
-	os.WriteFile(filePath, repoBytes, 0777)
+	if err := os.WriteFile(filePath, repoBytes, 0777); err != nil {
+		return fmt.Errorf("save repository archive failed | path %s err %s", filePath, err)
+	}
 
 	w := utils.NewPipelineBuild(pipeline, j.controller.AskAgentCh)
 	j.controller.RegisterBuild(w)

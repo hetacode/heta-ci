@@ -40,6 +40,9 @@ func NewController(addAgentCh, removeAgentCh chan *Agent) *Controller {
 	if err := os.Mkdir(PipelinesDir, 0777); err != nil {
 		log.Printf("start controller | warning: create %s directory failed | %s", PipelinesDir, err)
 	}
+	if err := os.Mkdir(RepositoryDirectory, 0777); err != nil {
+		log.Printf("start controller | warning: create %s directory failed | %s", RepositoryDirectory, err)
+	}
 
 	return c
 }
