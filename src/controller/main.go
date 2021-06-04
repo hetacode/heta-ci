@@ -13,7 +13,6 @@ import (
 	"github.com/hetacode/heta-ci/controller/eventhandlers"
 	"github.com/hetacode/heta-ci/controller/handlers"
 	"github.com/hetacode/heta-ci/controller/jobs"
-	"github.com/hetacode/heta-ci/controller/processors"
 	"github.com/hetacode/heta-ci/controller/utils"
 	"github.com/hetacode/heta-ci/events/agent"
 	"github.com/hetacode/heta-ci/proto"
@@ -32,15 +31,7 @@ func main() {
 	c := utils.NewController(addAgentCh, removeAgentCh)
 	ehm := registerEventHandlers(c)
 
-	rp := &processors.RepositoryProcessor{
-		Controller: c,
-	}
 	r := prepareRepositories()
-	for _, i := range r {
-		if err := rp.Process(i); err != nil {
-			log.Printf("process repository err: %s", err)
-		}
-	}
 	c.Repositories = r
 
 	// TODO: for test

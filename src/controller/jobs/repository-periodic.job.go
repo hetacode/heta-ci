@@ -112,11 +112,9 @@ func (j *RepositoryPeriodicJob) Run() {
 func (j *RepositoryPeriodicJob) findAndRunBranches(pipeline *structs.Pipeline, repository *utils.Repository, runOnPattern string, branches []string) error {
 	checkPattern := regexp.MustCompile(runOnPattern)
 	for _, b := range branches {
-		correctPattern := checkPattern.MatchString(b)
-		fmt.Printf("repoID: %s check '%s' pattern: %s - %t \n", repository.ID, runOnPattern, b, correctPattern)
-		if correctPattern {
-			// TODO: run build
-			// build should check last processed commit and run newest version of code
+		isCorrectPattern := checkPattern.MatchString(b)
+		fmt.Printf("repoID: %s check '%s' pattern: %s - %t \n", repository.ID, runOnPattern, b, isCorrectPattern)
+		if isCorrectPattern {
 			if err := j.prepareBuildPipeline(pipeline, repository, structs.RunOnBranch, b); err != nil {
 				fmt.Printf("prepareBuildPipeline err %s\n", err)
 			}
@@ -128,7 +126,6 @@ func (j *RepositoryPeriodicJob) findAndRunBranches(pipeline *structs.Pipeline, r
 }
 
 func (j *RepositoryPeriodicJob) prepareBuildPipeline(pipeline *structs.Pipeline, repository *utils.Repository, runOnType structs.RunOnType, runOnValue string) error {
-	// TODO: fetch repo and check commits diffs
 	var repoBytes []byte
 	lastCommit := j.controller.BuildLastCommits.Get(repository.ID, runOnType, runOnValue)
 	if lastCommit == nil {
@@ -146,25 +143,69 @@ func (j *RepositoryPeriodicJob) prepareBuildPipeline(pipeline *structs.Pipeline,
 			return fmt.Errorf("get repo tree failed %s", err)
 		}
 
-		convertIter := &convertGitFileIterToZipFileIter{
-			iter: tree.Files(),
-		}
-
-		repoBytes, err = commons.ArchiveFiles(convertIter)
+		repoBytes, err = j.archiveRepoAndSaveLastCommit(tree, ref.Hash().String(), repository.ID, runOnType, runOnValue)
 		if err != nil {
-			return fmt.Errorf("archive repo failed %s", err)
+			return err
 		}
 	} else {
-		panic("prepareBuildPipeline - unimplemented diffs flow")
+		rc, err := git.Clone(memory.NewStorage(), nil, &git.CloneOptions{
+			URL:           repository.Url,
+			ReferenceName: plumbing.NewBranchReferenceName(strings.TrimPrefix(runOnValue, "origin/")),
+		})
+		if err != nil {
+			return fmt.Errorf("repo %s clone branch %s failed %s", repository.Url, runOnValue, err)
+		}
+		ref, _ := rc.Head()
+
+		// If head is the same as last commit - no changes
+		if ref.Hash().String() == *lastCommit {
+			return nil
+		}
+
+		headTree, _ := rc.TreeObject(ref.Hash())
+		oldTree, err := rc.TreeObject(plumbing.NewHash(*lastCommit))
+		if err != nil {
+			return fmt.Errorf("cannot find old tree object for %s hash err %s", *lastCommit, err)
+		}
+		changes, err := headTree.Diff(oldTree)
+		if err != nil {
+			return fmt.Errorf("diff failed between %s (head) - %s (last commit) err %s", ref.Hash().String(), *lastCommit, err)
+		}
+		if changes.Len() == 0 {
+			return nil // no changes
+		}
+
+		repoBytes, err = j.archiveRepoAndSaveLastCommit(headTree, ref.Hash().String(), repository.ID, runOnType, runOnValue)
+		if err != nil {
+			return err
+		}
 	}
 	repositoryArchiveID, _ := uuid.GenerateUUID()
 	pipeline.RepositoryArchiveID = repositoryArchiveID
 	filePath := fmt.Sprintf("%s/%s.zip", utils.RepositoryDirectory, repositoryArchiveID)
 	os.WriteFile(filePath, repoBytes, 0777)
+
+	w := utils.NewPipelineBuild(pipeline, j.controller.AskAgentCh)
+	j.controller.RegisterBuild(w)
+	go w.Run()
+
+	fmt.Println("end processeing " + runOnValue)
 	return nil
-	// w := utils.NewPipelineBuild(pipeline, j.controller.AskAgentCh)
-	// j.controller.RegisterBuild(w)
-	// w.Run()
+}
+
+func (j *RepositoryPeriodicJob) archiveRepoAndSaveLastCommit(tree *object.Tree, commitSha, repositoryID string, runOnType structs.RunOnType, runOnValue string) ([]byte, error) {
+	convertIter := &convertGitFileIterToZipFileIter{
+		iter: tree.Files(),
+	}
+
+	repoBytes, err := commons.ArchiveFiles(convertIter)
+	if err != nil {
+		return nil, fmt.Errorf("archive repo failed %s", err)
+	}
+
+	j.controller.BuildLastCommits.Add(repositoryID, runOnType, runOnValue, commitSha)
+
+	return repoBytes, nil
 }
 
 type convertGitFileIterToZipFileIter struct {
