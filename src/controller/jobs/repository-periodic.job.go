@@ -124,8 +124,8 @@ func (j *RepositoryPeriodicJob) findAndRunBranches(pipeline *structs.Pipeline, r
 
 func (j *RepositoryPeriodicJob) prepareBuildPipeline(pipeline *structs.Pipeline, repository *utils.Repository, runOnType structs.RunOnType, runOnValue string) error {
 	var repoBytes []byte
-	lastCommit := j.controller.BuildLastCommits.Get(repository.ID, runOnType, runOnValue)
-	if lastCommit == nil {
+	lastCommitHash := j.controller.BuildLastCommits.Get(repository.ID, runOnType, runOnValue)
+	if lastCommitHash == nil {
 		rc, err := git.Clone(memory.NewStorage(), nil, &git.CloneOptions{
 			URL:           repository.Url,
 			ReferenceName: plumbing.NewBranchReferenceName(strings.TrimPrefix(runOnValue, "origin/")),
@@ -155,24 +155,33 @@ func (j *RepositoryPeriodicJob) prepareBuildPipeline(pipeline *structs.Pipeline,
 		ref, _ := rc.Head()
 
 		// If head is the same as last commit - no changes
-		if ref.Hash().String() == *lastCommit {
+		if ref.Hash().String() == *lastCommitHash {
 			return nil
 		}
 
-		headTree, _ := rc.TreeObject(ref.Hash())
-		oldTree, err := rc.TreeObject(plumbing.NewHash(*lastCommit))
+		headCommit, err := rc.CommitObject(ref.Hash())
 		if err != nil {
-			return fmt.Errorf("cannot find old tree object for %s hash err %s", *lastCommit, err)
+			return fmt.Errorf("cannot fetch commit for %s hash (head) err %s", *lastCommitHash, err)
+		}
+		headTree, _ := headCommit.Tree()
+
+		oldCommit, err := rc.CommitObject(plumbing.NewHash(*lastCommitHash))
+		if err != nil {
+			return fmt.Errorf("cannot fetch commit for %s hash err %s", *lastCommitHash, err)
+		}
+		oldTree, err := oldCommit.Tree()
+		if err != nil {
+			return fmt.Errorf("cannot find old tree from commit object for %s hash err %s", *lastCommitHash, err)
 		}
 		changes, err := headTree.Diff(oldTree)
 		if err != nil {
-			return fmt.Errorf("diff failed between %s (head) - %s (last commit) err %s", ref.Hash().String(), *lastCommit, err)
+			return fmt.Errorf("diff failed between %s (head) - %s (last commit) err %s", ref.Hash().String(), *lastCommitHash, err)
 		}
 		if changes.Len() == 0 {
 			return nil // no changes
 		}
 
-		log.Printf("start job for: %s repo | %s branch | %s last hash | %s head hash", repository.Url, runOnValue, *lastCommit, ref.Hash().String())
+		log.Printf("start job for: %s repo | %s branch | %s last hash | %s head hash", repository.Url, runOnValue, *lastCommitHash, ref.Hash().String())
 		repoBytes, err = j.archiveRepoAndSaveLastCommit(headTree, ref.Hash().String(), repository.ID, runOnType, runOnValue)
 		if err != nil {
 			return err
