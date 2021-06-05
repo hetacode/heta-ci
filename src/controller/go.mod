@@ -11,6 +11,7 @@ require (
 	github.com/hetacode/heta-ci/events v0.0.1
 	github.com/hetacode/heta-ci/proto v0.0.1
 	github.com/hetacode/heta-ci/structs v0.0.1
+	github.com/robfig/cron/v3 v3.0.0 // indirect
 	google.golang.org/grpc v1.36.1
 	gopkg.in/yaml.v2 v2.4.0 // indirect
 )

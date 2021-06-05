@@ -1,16 +1,17 @@
 package main
 
 import (
+	"crypto/sha256"
+	"encoding/hex"
 	"log"
 	"net"
 	"net/http"
-	"time"
 
 	"github.com/gorilla/mux"
 	goeh "github.com/hetacode/go-eh"
 	"github.com/hetacode/heta-ci/controller/eventhandlers"
 	"github.com/hetacode/heta-ci/controller/handlers"
-	"github.com/hetacode/heta-ci/controller/processors"
+	"github.com/hetacode/heta-ci/controller/jobs"
 	"github.com/hetacode/heta-ci/controller/utils"
 	"github.com/hetacode/heta-ci/events/agent"
 	"github.com/hetacode/heta-ci/proto"
@@ -29,15 +30,12 @@ func main() {
 	c := utils.NewController(addAgentCh, removeAgentCh)
 	ehm := registerEventHandlers(c)
 
-	rp := &processors.RepositoryProcessor{
-		Controller: c,
-	}
 	r := prepareRepositories()
-	for _, i := range r {
-		if err := rp.Process(i); err != nil {
-			log.Printf("process repository err: %s", err)
-		}
-	}
+	c.Repositories = r
+
+	// TODO: for test
+	rj := jobs.NewRepositoryPeriodicJob("@every 1m", c)
+	rj.Init()
 
 	go initRestApi(c)
 	lis, err := net.Listen("tcp", ":5000")
@@ -47,12 +45,6 @@ func main() {
 	srv := grpc.NewServer()
 	cs := utils.NewCommunicationServer(ehm, addAgentCh, removeAgentCh)
 	proto.RegisterCommunicationServer(srv, cs)
-
-	// TEST PIPELINE EXECUTIONS
-	go func() {
-		time.Sleep(10 * time.Second)
-		c.Execute()
-	}()
 
 	err = srv.Serve(lis)
 	if err != nil {
@@ -80,9 +72,14 @@ func registerEventHandlers(c *utils.Controller) *goeh.EventsHandlerManager {
 	return ehm
 }
 
+// TODO: temporary function
+// that should be fetch from DB
 func prepareRepositories() []utils.Repository {
+	repo := "https://github.com/hetacode/heta-ci-test-example.git"
+	sha := sha256.New()
+	sha.Write([]byte(repo))
 	repos := []utils.Repository{
-		{Url: "https://github.com/hetacode/heta-ci-test-example.git", DefaultBranch: "master"},
+		{ID: hex.EncodeToString(sha.Sum(nil)), Url: repo, DefaultBranch: "master"},
 	}
 
 	return repos
