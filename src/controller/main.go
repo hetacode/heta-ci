@@ -1,20 +1,21 @@
 package main
 
 import (
-	"crypto/sha256"
-	"encoding/hex"
 	"log"
 	"net"
 	"net/http"
 
 	"github.com/gorilla/mux"
 	goeh "github.com/hetacode/go-eh"
+	"github.com/hetacode/heta-ci/controller/db"
 	"github.com/hetacode/heta-ci/controller/eventhandlers"
 	"github.com/hetacode/heta-ci/controller/handlers"
 	"github.com/hetacode/heta-ci/controller/jobs"
 	"github.com/hetacode/heta-ci/controller/utils"
 	"github.com/hetacode/heta-ci/events/agent"
 	"github.com/hetacode/heta-ci/proto"
+	_ "github.com/lib/pq"
+	"github.com/xo/dburl"
 	"google.golang.org/grpc"
 )
 
@@ -75,14 +76,27 @@ func registerEventHandlers(c *utils.Controller) *goeh.EventsHandlerManager {
 // TODO: temporary function
 // that should be fetch from DB
 func prepareRepositories() []utils.Repository {
-	repo := "https://github.com/hetacode/heta-ci-test-example.git"
-	sha := sha256.New()
-	sha.Write([]byte(repo))
-	repos := []utils.Repository{
-		{ID: hex.EncodeToString(sha.Sum(nil)), Url: repo, DefaultBranch: "master"},
+	// From DB
+	conn, err := dburl.Open("pgsql://postgres:postgrespass@localhost/heta-ci?sslmode=disable")
+	if err != nil {
+		log.Panicf("open connection to database failed %s", err)
+	}
+	rows, err := conn.Query("select * from public.repository")
+	dtoRepositories := make([]db.Repository, 0)
+	repositories := make([]utils.Repository, 0)
+	for rows.Next() {
+		dtoRepo := db.Repository{}
+		rows.Scan(&dtoRepo.RepoHash, &dtoRepo.RepositoryURL, &dtoRepo.DefaultBranch, &dtoRepo.Name, &dtoRepo.CreatedAt, &dtoRepo.ProjectUID)
+		dtoRepositories = append(dtoRepositories, dtoRepo)
+		repo := utils.Repository{
+			ID:            dtoRepo.RepoHash,
+			Url:           dtoRepo.RepositoryURL,
+			DefaultBranch: dtoRepo.DefaultBranch,
+		}
+		repositories = append(repositories, repo)
 	}
 
-	return repos
+	return repositories
 }
 
 // func preparePipeline() *structs.Pipeline {
