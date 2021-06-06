@@ -58,6 +58,7 @@ CREATE TABLE IF NOT EXISTS public.repository
 (
     repo_hash character varying(65) COLLATE pg_catalog."default" NOT NULL,
     repository_url text COLLATE pg_catalog."default" NOT NULL,
+    default_branch text COLLATE pg_catalog."default" NOT NULL,
     name character varying(50) COLLATE pg_catalog."default" NOT NULL,
     created_at bigint NOT NULL,
     project_uid uuid NOT NULL,
