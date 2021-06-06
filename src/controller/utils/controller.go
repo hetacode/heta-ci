@@ -1,12 +1,17 @@
 package utils
 
 import (
+	"encoding/json"
 	"log"
 	"os"
 	"sync"
 	"time"
 
+	"github.com/gofrs/uuid"
+	"github.com/hetacode/heta-ci/controller/db"
+	"github.com/hetacode/heta-ci/controller/enums"
 	"github.com/hetacode/heta-ci/structs"
+	"github.com/xo/dburl"
 )
 
 type Controller struct {
@@ -51,9 +56,26 @@ func (c *Controller) AddPipeline(p *structs.Pipeline) {
 	c.pipelines = append(c.pipelines, p)
 }
 
-func (c *Controller) RegisterBuild(build *PipelineBuild) {
+func (c *Controller) RegisterBuild(build *PipelineBuild, repositoryHash string) {
 	c.Builds[build.ID] = build
 	c.buildsAgentResponseCh[build.ID] = build.AgentResponseChan
+
+	// TODO: move creating connection to the some common place
+	conn, err := dburl.Open("pgsql://postgres:postgrespass@localhost/heta-ci?sslmode=disable")
+	if err != nil {
+		log.Panicf("open connection to database failed %s", err)
+	}
+
+	pipelineBytes, _ := json.Marshal(build.Pipeline)
+	uid, _ := uuid.FromString(build.ID)
+	dbBuild := &db.Build{
+		UID:            uid,
+		RepositoryHash: repositoryHash,
+		PipelineJSON:   string(pipelineBytes),
+		ResultStatus:   string(enums.BuildStatusNone),
+		CreatedAt:      time.Now().Unix(),
+	}
+	dbBuild.Insert(conn)
 }
 
 func (c *Controller) agentsManager() {

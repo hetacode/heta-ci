@@ -195,7 +195,7 @@ func (j *RepositoryPeriodicJob) prepareBuildPipeline(pipeline *structs.Pipeline,
 	}
 
 	w := utils.NewPipelineBuild(pipeline, j.controller.AskAgentCh)
-	j.controller.RegisterBuild(w)
+	j.controller.RegisterBuild(w, repository.ID)
 	go w.Run()
 
 	fmt.Println("end processeing " + runOnValue)
