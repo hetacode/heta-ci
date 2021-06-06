@@ -8,3 +8,4 @@ services:
       - 5432:5432
     volumes:
       - ./scripts/db/init-db.sql:/docker-entrypoint-initdb.d/init-db.sql
+      - ./scripts/db/init-inserts.sql:/docker-entrypoint-initdb.d/init-inserts-db.sql
