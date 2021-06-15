@@ -7,6 +7,8 @@ import (
 	"sync"
 	"time"
 
+	intlstructs "github.com/hetacode/heta-ci/controller/structs"
+
 	"github.com/hetacode/heta-ci/controller/db"
 	"github.com/hetacode/heta-ci/controller/utils"
 	"github.com/hetacode/heta-ci/structs"
@@ -16,7 +18,7 @@ type Controller struct {
 	DBRepository     db.DBRepository
 	Repositories     []utils.Repository
 	Builds           map[string]*utils.PipelineBuild
-	BuildLastCommits utils.BuildLastCommits
+	BuildLastCommits intlstructs.BuildLastCommits
 	pipelines        []*structs.Pipeline
 	agents           []*utils.Agent // list of free agents
 
@@ -31,7 +33,7 @@ func NewController(dbRepository db.DBRepository, addAgentCh, removeAgentCh chan 
 	c := &Controller{
 		DBRepository:          dbRepository,
 		Builds:                make(map[string]*utils.PipelineBuild),
-		BuildLastCommits:      make(utils.BuildLastCommits),
+		BuildLastCommits:      make(intlstructs.BuildLastCommits),
 		pipelines:             make([]*structs.Pipeline, 0),
 		agents:                make([]*utils.Agent, 0),
 		buildsAgentResponseCh: make(map[string]chan *utils.Agent),

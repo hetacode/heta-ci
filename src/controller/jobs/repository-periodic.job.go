@@ -126,7 +126,7 @@ func (j *RepositoryPeriodicJob) findAndRunBranches(pipeline *structs.Pipeline, r
 func (j *RepositoryPeriodicJob) prepareBuildPipeline(pipeline *structs.Pipeline, repository *utils.Repository, runOnType structs.RunOnType, runOnValue string) error {
 	var repoBytes []byte
 
-	lastCommitHash := j.controller.BuildLastCommits.Get(repository.ID, runOnType, runOnValue)
+	lastCommitHash := j.controller.BuildLastCommits.Get(j.controller.DBRepository, repository.ID, runOnType, runOnValue)
 	if lastCommitHash == nil {
 		rc, err := git.Clone(memory.NewStorage(), nil, &git.CloneOptions{
 			URL:           repository.Url,
@@ -222,7 +222,7 @@ func (j *RepositoryPeriodicJob) archiveRepoAndSaveLastCommit(tree *object.Tree, 
 		return nil, fmt.Errorf("archive repo failed %s", err)
 	}
 
-	j.controller.BuildLastCommits.Add(repositoryID, runOnType, runOnValue, commitSha)
+	j.controller.BuildLastCommits.Add(j.controller.DBRepository, repositoryID, runOnType, runOnValue, commitSha)
 
 	return repoBytes, nil
 }
