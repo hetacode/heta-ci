@@ -1,21 +1,19 @@
 package app
 
 import (
-	"encoding/json"
+	"fmt"
 	"log"
 	"os"
 	"sync"
 	"time"
 
-	"github.com/gofrs/uuid"
 	"github.com/hetacode/heta-ci/controller/db"
-	"github.com/hetacode/heta-ci/controller/enums"
 	"github.com/hetacode/heta-ci/controller/utils"
 	"github.com/hetacode/heta-ci/structs"
-	"github.com/xo/dburl"
 )
 
 type Controller struct {
+	DBRepository     db.DBRepository
 	Repositories     []utils.Repository
 	Builds           map[string]*utils.PipelineBuild
 	BuildLastCommits utils.BuildLastCommits
@@ -29,8 +27,9 @@ type Controller struct {
 	removeAgentCh         chan *utils.Agent
 }
 
-func NewController(addAgentCh, removeAgentCh chan *utils.Agent) *Controller {
+func NewController(dbRepository db.DBRepository, addAgentCh, removeAgentCh chan *utils.Agent) *Controller {
 	c := &Controller{
+		DBRepository:          dbRepository,
 		Builds:                make(map[string]*utils.PipelineBuild),
 		BuildLastCommits:      make(utils.BuildLastCommits),
 		pipelines:             make([]*structs.Pipeline, 0),
@@ -57,27 +56,15 @@ func (c *Controller) AddPipeline(p *structs.Pipeline) {
 	c.pipelines = append(c.pipelines, p)
 }
 
-func (c *Controller) RegisterBuild(build *utils.PipelineBuild, repositoryHash string, commitHash string) {
+func (c *Controller) RegisterBuild(build *utils.PipelineBuild, repositoryHash string, commitHash string) error {
+	if err := c.DBRepository.StoreBuildData(build, repositoryHash, commitHash); err != nil {
+		return fmt.Errorf("store build data in db failed %s", err)
+	}
+
 	c.Builds[build.ID] = build
 	c.buildsAgentResponseCh[build.ID] = build.AgentResponseChan
 
-	// TODO: move creating connection to the some common place
-	conn, err := dburl.Open("pgsql://postgres:postgrespass@localhost/heta-ci?sslmode=disable")
-	if err != nil {
-		log.Panicf("open connection to database failed %s", err)
-	}
-
-	pipelineBytes, _ := json.Marshal(build.Pipeline)
-	uid, _ := uuid.FromString(build.ID)
-	dbBuild := &db.Build{
-		UID:            uid,
-		RepositoryHash: repositoryHash,
-		CommitHash:     commitHash,
-		PipelineJSON:   string(pipelineBytes),
-		ResultStatus:   string(enums.BuildStatusNone),
-		CreatedAt:      time.Now().Unix(),
-	}
-	dbBuild.Insert(conn)
+	return nil
 }
 
 func (c *Controller) agentsManager() {

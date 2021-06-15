@@ -9,5 +9,5 @@ type DBRepository interface {
 	GetBuildsByRepositoryHash(repositoryHash string) (*[]Build, error)
 	GetBuildByCommitHash(commitHash string) (*Build, error)
 	SetLastBuildCommit(key string, commitHash string) error
-	GetLastBuildCommit(key string) (commitHash string, createOn int64, error error)
+	GetLastBuildCommit(key string) (commitHash *string, createOn *int64, error error)
 }

@@ -53,7 +53,12 @@ func (d *PostgresDBRepository) StoreBuildData(buildPipeline *utils.PipelineBuild
 		ResultStatus:   string(enums.BuildStatusNone),
 		CreatedAt:      time.Now().Unix(),
 	}
-	return dbBuild.Insert(d.connection)
+	err := dbBuild.Insert(d.connection)
+	if err != sql.ErrNoRows {
+		return err
+	}
+
+	return nil
 }
 
 func (d *PostgresDBRepository) GetBuildsByRepositoryHash(repositoryHash string) (*[]Build, error) {
@@ -110,7 +115,12 @@ func (d *PostgresDBRepository) SetLastBuildCommit(key string, commitHash string)
 		ValueHashCommit: commitHash,
 		CreatedAt:       time.Now().Unix(),
 	}
-	return lastCommit.Insert(d.connection)
+	err := lastCommit.Insert(d.connection)
+	if err != sql.ErrNoRows {
+		return err
+	}
+
+	return nil
 
 }
 func (d *PostgresDBRepository) GetLastBuildCommit(key string) (commitHash *string, createOn *int64, error error) {

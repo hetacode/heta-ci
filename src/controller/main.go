@@ -16,7 +16,6 @@ import (
 	"github.com/hetacode/heta-ci/events/agent"
 	"github.com/hetacode/heta-ci/proto"
 	_ "github.com/lib/pq"
-	"github.com/xo/dburl"
 	"google.golang.org/grpc"
 )
 
@@ -26,13 +25,17 @@ func main() {
 
 	// ############
 
+	dbRepository, err := db.NewPostgresDBRepository("pgsql://postgres:postgrespass@localhost/heta-ci?sslmode=disable")
+	if err != nil {
+		log.Fatal(err)
+	}
 	addAgentCh := make(chan *utils.Agent)
 	removeAgentCh := make(chan *utils.Agent)
 
-	c := app.NewController(addAgentCh, removeAgentCh)
+	c := app.NewController(dbRepository, addAgentCh, removeAgentCh)
 	ehm := registerEventHandlers(c)
 
-	r := prepareRepositories()
+	r := prepareRepositories(dbRepository)
 	c.Repositories = r
 
 	// TODO: for test
@@ -75,26 +78,17 @@ func registerEventHandlers(c *app.Controller) *goeh.EventsHandlerManager {
 }
 
 // TODO: temporary function
-// that should be fetch from DB
-func prepareRepositories() []utils.Repository {
-
-	// TODO: take this from DB repository
-	// From DB
-	conn, err := dburl.Open("pgsql://postgres:postgrespass@localhost/heta-ci?sslmode=disable")
+func prepareRepositories(dbRepository db.DBRepository) []utils.Repository {
+	dbRepos, err := dbRepository.GetRepositories()
 	if err != nil {
-		log.Panicf("open connection to database failed %s", err)
+		log.Fatal(err)
 	}
-	rows, err := conn.Query("select * from public.repository")
-	dtoRepositories := make([]db.Repository, 0)
 	repositories := make([]utils.Repository, 0)
-	for rows.Next() {
-		dtoRepo := db.Repository{}
-		rows.Scan(&dtoRepo.RepoHash, &dtoRepo.RepositoryURL, &dtoRepo.DefaultBranch, &dtoRepo.Name, &dtoRepo.CreatedAt, &dtoRepo.ProjectUID)
-		dtoRepositories = append(dtoRepositories, dtoRepo)
+	for _, r := range *dbRepos {
 		repo := utils.Repository{
-			ID:            dtoRepo.RepoHash,
-			Url:           dtoRepo.RepositoryURL,
-			DefaultBranch: dtoRepo.DefaultBranch,
+			ID:            r.RepoHash,
+			Url:           r.RepositoryURL,
+			DefaultBranch: r.DefaultBranch,
 		}
 		repositories = append(repositories, repo)
 	}
