@@ -9,9 +9,10 @@ import (
 
 // KvBuildLastCommit represents a row from 'public.kv_build_last_commit'.
 type KvBuildLastCommit struct {
+	ID              int    `json:"id"`                // id
 	Key             string `json:"key"`               // key
 	ValueHashCommit string `json:"value_hash_commit"` // value_hash_commit
-	UpdateOn        int64  `json:"update_on"`         // update_on
+	CreatedAt       int64  `json:"created_at"`        // created_at
 
 	// xo fields
 	_exists, _deleted bool
@@ -36,16 +37,16 @@ func (kblc *KvBuildLastCommit) Insert(db XODB) error {
 		return errors.New("insert failed: already exists")
 	}
 
-	// sql insert query, primary key must be provided
+	// sql insert query, primary key provided by sequence
 	const sqlstr = `INSERT INTO public.kv_build_last_commit (` +
-		`key, value_hash_commit, update_on` +
+		`key, value_hash_commit, created_at` +
 		`) VALUES (` +
 		`$1, $2, $3` +
-		`)`
+		`) RETURNING id`
 
 	// run query
-	XOLog(sqlstr, kblc.Key, kblc.ValueHashCommit, kblc.UpdateOn)
-	err = db.QueryRow(sqlstr, kblc.Key, kblc.ValueHashCommit, kblc.UpdateOn).Scan(&kblc.Key)
+	XOLog(sqlstr, kblc.Key, kblc.ValueHashCommit, kblc.CreatedAt)
+	err = db.QueryRow(sqlstr, kblc.Key, kblc.ValueHashCommit, kblc.CreatedAt).Scan(&kblc.ID)
 	if err != nil {
 		return err
 	}
@@ -72,14 +73,14 @@ func (kblc *KvBuildLastCommit) Update(db XODB) error {
 
 	// sql query
 	const sqlstr = `UPDATE public.kv_build_last_commit SET (` +
-		`value_hash_commit, update_on` +
+		`key, value_hash_commit, created_at` +
 		`) = ( ` +
-		`$1, $2` +
-		`) WHERE key = $3`
+		`$1, $2, $3` +
+		`) WHERE id = $4`
 
 	// run query
-	XOLog(sqlstr, kblc.ValueHashCommit, kblc.UpdateOn, kblc.Key)
-	_, err = db.Exec(sqlstr, kblc.ValueHashCommit, kblc.UpdateOn, kblc.Key)
+	XOLog(sqlstr, kblc.Key, kblc.ValueHashCommit, kblc.CreatedAt, kblc.ID)
+	_, err = db.Exec(sqlstr, kblc.Key, kblc.ValueHashCommit, kblc.CreatedAt, kblc.ID)
 	return err
 }
 
@@ -105,18 +106,18 @@ func (kblc *KvBuildLastCommit) Upsert(db XODB) error {
 
 	// sql query
 	const sqlstr = `INSERT INTO public.kv_build_last_commit (` +
-		`key, value_hash_commit, update_on` +
+		`id, key, value_hash_commit, created_at` +
 		`) VALUES (` +
-		`$1, $2, $3` +
-		`) ON CONFLICT (key) DO UPDATE SET (` +
-		`key, value_hash_commit, update_on` +
+		`$1, $2, $3, $4` +
+		`) ON CONFLICT (id) DO UPDATE SET (` +
+		`id, key, value_hash_commit, created_at` +
 		`) = (` +
-		`EXCLUDED.key, EXCLUDED.value_hash_commit, EXCLUDED.update_on` +
+		`EXCLUDED.id, EXCLUDED.key, EXCLUDED.value_hash_commit, EXCLUDED.created_at` +
 		`)`
 
 	// run query
-	XOLog(sqlstr, kblc.Key, kblc.ValueHashCommit, kblc.UpdateOn)
-	_, err = db.Exec(sqlstr, kblc.Key, kblc.ValueHashCommit, kblc.UpdateOn)
+	XOLog(sqlstr, kblc.ID, kblc.Key, kblc.ValueHashCommit, kblc.CreatedAt)
+	_, err = db.Exec(sqlstr, kblc.ID, kblc.Key, kblc.ValueHashCommit, kblc.CreatedAt)
 	if err != nil {
 		return err
 	}
@@ -142,11 +143,11 @@ func (kblc *KvBuildLastCommit) Delete(db XODB) error {
 	}
 
 	// sql query
-	const sqlstr = `DELETE FROM public.kv_build_last_commit WHERE key = $1`
+	const sqlstr = `DELETE FROM public.kv_build_last_commit WHERE id = $1`
 
 	// run query
-	XOLog(sqlstr, kblc.Key)
-	_, err = db.Exec(sqlstr, kblc.Key)
+	XOLog(sqlstr, kblc.ID)
+	_, err = db.Exec(sqlstr, kblc.ID)
 	if err != nil {
 		return err
 	}
@@ -157,25 +158,25 @@ func (kblc *KvBuildLastCommit) Delete(db XODB) error {
 	return nil
 }
 
-// KvBuildLastCommitByKey retrieves a row from 'public.kv_build_last_commit' as a KvBuildLastCommit.
+// KvBuildLastCommitByID retrieves a row from 'public.kv_build_last_commit' as a KvBuildLastCommit.
 //
 // Generated from index 'kv_build_last_commit_pkey'.
-func KvBuildLastCommitByKey(db XODB, key string) (*KvBuildLastCommit, error) {
+func KvBuildLastCommitByID(db XODB, id int) (*KvBuildLastCommit, error) {
 	var err error
 
 	// sql query
 	const sqlstr = `SELECT ` +
-		`key, value_hash_commit, update_on ` +
+		`id, key, value_hash_commit, created_at ` +
 		`FROM public.kv_build_last_commit ` +
-		`WHERE key = $1`
+		`WHERE id = $1`
 
 	// run query
-	XOLog(sqlstr, key)
+	XOLog(sqlstr, id)
 	kblc := KvBuildLastCommit{
 		_exists: true,
 	}
 
-	err = db.QueryRow(sqlstr, key).Scan(&kblc.Key, &kblc.ValueHashCommit, &kblc.UpdateOn)
+	err = db.QueryRow(sqlstr, id).Scan(&kblc.ID, &kblc.Key, &kblc.ValueHashCommit, &kblc.CreatedAt)
 	if err != nil {
 		return nil, err
 	}

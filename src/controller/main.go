@@ -7,6 +7,7 @@ import (
 
 	"github.com/gorilla/mux"
 	goeh "github.com/hetacode/go-eh"
+	"github.com/hetacode/heta-ci/controller/app"
 	"github.com/hetacode/heta-ci/controller/db"
 	"github.com/hetacode/heta-ci/controller/eventhandlers"
 	"github.com/hetacode/heta-ci/controller/handlers"
@@ -28,7 +29,7 @@ func main() {
 	addAgentCh := make(chan *utils.Agent)
 	removeAgentCh := make(chan *utils.Agent)
 
-	c := utils.NewController(addAgentCh, removeAgentCh)
+	c := app.NewController(addAgentCh, removeAgentCh)
 	ehm := registerEventHandlers(c)
 
 	r := prepareRepositories()
@@ -53,7 +54,7 @@ func main() {
 	}
 }
 
-func initRestApi(c *utils.Controller) {
+func initRestApi(c *app.Controller) {
 	h := &handlers.Handlers{Controller: c}
 	r := mux.NewRouter()
 	r.HandleFunc("/download/{category}/{buildId}", h.DownloadFileHandler)
@@ -65,7 +66,7 @@ func initRestApi(c *utils.Controller) {
 	srv.ListenAndServe()
 }
 
-func registerEventHandlers(c *utils.Controller) *goeh.EventsHandlerManager {
+func registerEventHandlers(c *app.Controller) *goeh.EventsHandlerManager {
 	ehm := goeh.NewEventsHandlerManager()
 	ehm.Register(new(agent.LogMessageEvent), &eventhandlers.LogMessageEventHandler{Controller: c})
 	ehm.Register(new(agent.JobFinishedEvent), &eventhandlers.JobFinishedEventHandler{Controller: c})
@@ -76,6 +77,8 @@ func registerEventHandlers(c *utils.Controller) *goeh.EventsHandlerManager {
 // TODO: temporary function
 // that should be fetch from DB
 func prepareRepositories() []utils.Repository {
+
+	// TODO: take this from DB repository
 	// From DB
 	conn, err := dburl.Open("pgsql://postgres:postgrespass@localhost/heta-ci?sslmode=disable")
 	if err != nil {

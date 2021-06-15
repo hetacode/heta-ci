@@ -14,6 +14,7 @@ import (
 	"github.com/go-git/go-git/v5/storage/memory"
 	"github.com/hashicorp/go-uuid"
 	"github.com/hetacode/heta-ci/commons"
+	"github.com/hetacode/heta-ci/controller/app"
 	"github.com/hetacode/heta-ci/controller/utils"
 	"github.com/hetacode/heta-ci/structs"
 	"github.com/robfig/cron/v3"
@@ -21,13 +22,13 @@ import (
 )
 
 type RepositoryPeriodicJob struct {
-	controller *utils.Controller
+	controller *app.Controller
 	lastRun    int64
 	cron       string
 	isRunning  bool
 }
 
-func NewRepositoryPeriodicJob(cron string, ctrl *utils.Controller) *RepositoryPeriodicJob {
+func NewRepositoryPeriodicJob(cron string, ctrl *app.Controller) *RepositoryPeriodicJob {
 	j := &RepositoryPeriodicJob{
 		controller: ctrl,
 		lastRun:    0,

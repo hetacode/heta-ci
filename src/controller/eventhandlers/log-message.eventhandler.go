@@ -4,12 +4,12 @@ import (
 	"log"
 
 	goeh "github.com/hetacode/go-eh"
-	"github.com/hetacode/heta-ci/controller/utils"
+	"github.com/hetacode/heta-ci/controller/app"
 	"github.com/hetacode/heta-ci/events/agent"
 )
 
 type LogMessageEventHandler struct {
-	Controller *utils.Controller
+	Controller *app.Controller
 }
 
 func (e *LogMessageEventHandler) Handle(event goeh.Event) {

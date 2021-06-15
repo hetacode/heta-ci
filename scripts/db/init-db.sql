@@ -15,10 +15,10 @@
 
 CREATE TABLE IF NOT EXISTS public.kv_build_last_commit
 (
+    id SERIAL PRIMARY KEY,
     key character varying(150) COLLATE pg_catalog."default" NOT NULL,
     value_hash_commit character varying(40) COLLATE pg_catalog."default" NOT NULL,
-    update_on bigint NOT NULL,
-    CONSTRAINT kv_build_last_commit_pkey PRIMARY KEY (key)
+    created_at bigint NOT NULL
 )
 
 TABLESPACE pg_default;

@@ -1,6 +1,6 @@
 package handlers
 
-import "github.com/hetacode/heta-ci/controller/utils"
+import "github.com/hetacode/heta-ci/controller/app"
 
 type FileCategory string
 
@@ -10,5 +10,5 @@ const (
 )
 
 type Handlers struct {
-	Controller *utils.Controller
+	Controller *app.Controller
 }
