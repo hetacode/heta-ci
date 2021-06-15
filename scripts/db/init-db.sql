@@ -9,7 +9,23 @@
 
 \c "heta-ci";
 
+-- Table: public.kv_build_last_commit
 
+-- DROP TABLE public.kv_build_last_commit;
+
+CREATE TABLE IF NOT EXISTS public.kv_build_last_commit
+(
+    key character varying(150) COLLATE pg_catalog."default" NOT NULL,
+    value_hash_commit character varying(40) COLLATE pg_catalog."default" NOT NULL,
+    update_on bigint NOT NULL,
+    CONSTRAINT kv_build_last_commit_pkey PRIMARY KEY (key)
+)
+
+TABLESPACE pg_default;
+
+ALTER TABLE public.kv_build_last_commit
+    OWNER to postgres;
+    
 -- Table: public.build
 
 -- DROP TABLE public.build;
@@ -18,6 +34,7 @@ CREATE TABLE IF NOT EXISTS public.build
 (
     uid uuid NOT NULL,
     repository_hash character varying(65) COLLATE pg_catalog."default" NOT NULL,
+    commit_hash character varying(40) COLLATE pg_catalog."default" NOT NULL,
     pipeline_json json NOT NULL,
     logs text COLLATE pg_catalog."default",
     result_status character varying(10) COLLATE pg_catalog."default" NOT NULL,

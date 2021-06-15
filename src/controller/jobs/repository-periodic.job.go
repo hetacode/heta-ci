@@ -124,6 +124,7 @@ func (j *RepositoryPeriodicJob) findAndRunBranches(pipeline *structs.Pipeline, r
 
 func (j *RepositoryPeriodicJob) prepareBuildPipeline(pipeline *structs.Pipeline, repository *utils.Repository, runOnType structs.RunOnType, runOnValue string) error {
 	var repoBytes []byte
+
 	lastCommitHash := j.controller.BuildLastCommits.Get(repository.ID, runOnType, runOnValue)
 	if lastCommitHash == nil {
 		rc, err := git.Clone(memory.NewStorage(), nil, &git.CloneOptions{
@@ -140,6 +141,9 @@ func (j *RepositoryPeriodicJob) prepareBuildPipeline(pipeline *structs.Pipeline,
 			return fmt.Errorf("get repo tree failed %s", err)
 		}
 
+		log.Printf("start job for: %s repo | %s branch | %s head hash", repository.Url, runOnValue, ref.Hash().String())
+		commitSha := ref.Hash().String()
+		lastCommitHash = &commitSha
 		repoBytes, err = j.archiveRepoAndSaveLastCommit(tree, ref.Hash().String(), repository.ID, runOnType, runOnValue)
 		if err != nil {
 			return err
@@ -182,6 +186,9 @@ func (j *RepositoryPeriodicJob) prepareBuildPipeline(pipeline *structs.Pipeline,
 		}
 
 		log.Printf("start job for: %s repo | %s branch | %s last hash | %s head hash", repository.Url, runOnValue, *lastCommitHash, ref.Hash().String())
+
+		commitSha := ref.Hash().String()
+		lastCommitHash = &commitSha
 		repoBytes, err = j.archiveRepoAndSaveLastCommit(headTree, ref.Hash().String(), repository.ID, runOnType, runOnValue)
 		if err != nil {
 			return err
@@ -195,7 +202,7 @@ func (j *RepositoryPeriodicJob) prepareBuildPipeline(pipeline *structs.Pipeline,
 	}
 
 	w := utils.NewPipelineBuild(pipeline, j.controller.AskAgentCh)
-	j.controller.RegisterBuild(w, repository.ID)
+	j.controller.RegisterBuild(w, repository.ID, *lastCommitHash)
 	go w.Run()
 
 	fmt.Println("end processeing " + runOnValue)

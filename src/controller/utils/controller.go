@@ -56,7 +56,7 @@ func (c *Controller) AddPipeline(p *structs.Pipeline) {
 	c.pipelines = append(c.pipelines, p)
 }
 
-func (c *Controller) RegisterBuild(build *PipelineBuild, repositoryHash string) {
+func (c *Controller) RegisterBuild(build *PipelineBuild, repositoryHash string, commitHash string) {
 	c.Builds[build.ID] = build
 	c.buildsAgentResponseCh[build.ID] = build.AgentResponseChan
 
@@ -71,6 +71,7 @@ func (c *Controller) RegisterBuild(build *PipelineBuild, repositoryHash string) 
 	dbBuild := &db.Build{
 		UID:            uid,
 		RepositoryHash: repositoryHash,
+		CommitHash:     commitHash,
 		PipelineJSON:   string(pipelineBytes),
 		ResultStatus:   string(enums.BuildStatusNone),
 		CreatedAt:      time.Now().Unix(),

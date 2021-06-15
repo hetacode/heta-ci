@@ -7,6 +7,10 @@
 *.dylib
 
 src/proto-gen/*.go
+src/agent/code
+src/agent/scripts
+src/controller/pipelines
+src/controller/repos
 
 # Test binary, built with `go test -c`
 *.test
