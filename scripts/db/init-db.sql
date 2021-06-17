@@ -37,7 +37,7 @@ CREATE TABLE IF NOT EXISTS public.build
     commit_hash character varying(40) COLLATE pg_catalog."default" NOT NULL,
     pipeline_json json NOT NULL,
     logs text COLLATE pg_catalog."default",
-    result_status character varying(10) COLLATE pg_catalog."default" NOT NULL,
+    result_status character varying(20) COLLATE pg_catalog."default" NOT NULL,
     artifacts_uid uuid,
     created_at bigint NOT NULL,
     finish_at bigint,

@@ -59,7 +59,7 @@ func (c *Controller) AddPipeline(p *structs.Pipeline) {
 }
 
 func (c *Controller) RegisterBuild(build *utils.PipelineBuild, repositoryHash string, commitHash string) error {
-	if err := c.DBRepository.StoreBuildData(build, repositoryHash, commitHash); err != nil {
+	if err := c.DBRepository.StoreBuildData(build.ID, build.Pipeline, repositoryHash, commitHash); err != nil {
 		return fmt.Errorf("store build data in db failed %s", err)
 	}
 

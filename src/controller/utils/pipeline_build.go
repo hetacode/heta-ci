@@ -9,6 +9,8 @@ import (
 	"github.com/hashicorp/go-uuid"
 	goeh "github.com/hetacode/go-eh"
 	"github.com/hetacode/heta-ci/commons"
+	"github.com/hetacode/heta-ci/controller/db"
+	"github.com/hetacode/heta-ci/controller/enums"
 	"github.com/hetacode/heta-ci/events/controller"
 	"github.com/hetacode/heta-ci/structs"
 )
@@ -21,12 +23,14 @@ const (
 )
 
 type PipelineBuild struct {
-	ID         string
-	CommitHash string
-	Status     PipelineStatus
-	Pipeline   *structs.Pipeline
-	Agent      *Agent
-	Triggers   *PipelineTriggers
+	ID             string
+	RepositoryHash string
+	CommitHash     string
+	Status         PipelineStatus
+	Pipeline       *structs.Pipeline
+	Agent          *Agent
+	Triggers       *PipelineTriggers
+	dbRepository   db.DBRepository
 
 	RepositoryArchivePath string
 	ArtifactsDir          string
@@ -37,7 +41,7 @@ type PipelineBuild struct {
 	askAgentChan      chan string
 }
 
-func NewPipelineBuild(p *structs.Pipeline, askAgentCh chan string) *PipelineBuild {
+func NewPipelineBuild(p *structs.Pipeline, dbRepository db.DBRepository, askAgentCh chan string, repositoryHash, commitHash string) *PipelineBuild {
 	logCh := make(chan string)
 	errLogCh := make(chan string)
 
@@ -50,7 +54,10 @@ func NewPipelineBuild(p *structs.Pipeline, askAgentCh chan string) *PipelineBuil
 		AgentResponseChan:     make(chan *Agent),
 		askAgentChan:          askAgentCh,
 		Triggers:              NewPipelineTriggers(),
+		dbRepository:          dbRepository,
 		RepositoryArchivePath: path.Join(RepositoryDirectory, p.RepositoryArchiveID+".zip"),
+		RepositoryHash:        repositoryHash,
+		CommitHash:            commitHash,
 	}
 
 	go w.logs()
@@ -94,6 +101,11 @@ func (b *PipelineBuild) StartJob(job *structs.Job, isConditional bool) error {
 	b.askAgentChan <- b.ID
 	agent := <-b.AgentResponseChan
 	b.Agent = agent
+
+	// Change build status
+	if err := b.dbRepository.UpdateBuildStatus(b.RepositoryHash, b.CommitHash, enums.BuildStatusRunning); err != nil {
+		return fmt.Errorf("StartJob failed during UpdateBuildStatus err %s", err)
+	}
 
 	oid, _ := uuid.GenerateUUID()
 	ev := &controller.StartJobCommand{

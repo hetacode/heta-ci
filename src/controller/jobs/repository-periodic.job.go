@@ -202,13 +202,14 @@ func (j *RepositoryPeriodicJob) prepareBuildPipeline(pipeline *structs.Pipeline,
 		return fmt.Errorf("save repository archive failed | path %s err %s", filePath, err)
 	}
 
-	w := utils.NewPipelineBuild(pipeline, j.controller.AskAgentCh)
+	// Create build
+	w := utils.NewPipelineBuild(pipeline, j.controller.DBRepository, j.controller.AskAgentCh, repository.ID, *lastCommitHash)
 	if err := j.controller.RegisterBuild(w, repository.ID, *lastCommitHash); err != nil {
 		return err
 	}
 	go w.Run()
 
-	fmt.Println("end processeing " + runOnValue)
+	fmt.Println("end processing " + runOnValue)
 	return nil
 }
 

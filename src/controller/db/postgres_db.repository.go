@@ -8,7 +8,7 @@ import (
 
 	"github.com/gofrs/uuid"
 	"github.com/hetacode/heta-ci/controller/enums"
-	"github.com/hetacode/heta-ci/controller/utils"
+	"github.com/hetacode/heta-ci/structs"
 	"github.com/xo/dburl"
 )
 
@@ -34,7 +34,7 @@ func (d *PostgresDBRepository) GetRepositories() (*[]Repository, error) {
 	return getRepositories(rows), nil
 }
 func (d *PostgresDBRepository) GetRepositoriesByProjectID(projectID string) (*[]Repository, error) {
-	rows, err := d.connection.Query("select * from public.repository where project_uid=?", projectID)
+	rows, err := d.connection.Query("select * from public.repository where project_uid=$1", projectID)
 	if err != nil {
 		return nil, fmt.Errorf("cannot query for GetRepositoriesByProjectID %s", err)
 	}
@@ -42,9 +42,9 @@ func (d *PostgresDBRepository) GetRepositoriesByProjectID(projectID string) (*[]
 	return getRepositories(rows), nil
 }
 
-func (d *PostgresDBRepository) StoreBuildData(buildPipeline *utils.PipelineBuild, repositoryHash, commitHash string) error {
-	pipelineBytes, _ := json.Marshal(buildPipeline.Pipeline)
-	uid, _ := uuid.FromString(buildPipeline.ID)
+func (d *PostgresDBRepository) StoreBuildData(id string, pipeline *structs.Pipeline, repositoryHash, commitHash string) error {
+	pipelineBytes, _ := json.Marshal(pipeline)
+	uid, _ := uuid.FromString(id)
 	dbBuild := &Build{
 		UID:            uid,
 		RepositoryHash: repositoryHash,
@@ -61,8 +61,21 @@ func (d *PostgresDBRepository) StoreBuildData(buildPipeline *utils.PipelineBuild
 	return nil
 }
 
+func (d *PostgresDBRepository) UpdateBuildStatus(repositoryHash, commit string, status enums.BuildResultStatus) error {
+	build, err := d.GetBuildBy(repositoryHash, commit)
+	if err != nil {
+		return fmt.Errorf("UpdateBuildStatus get build failed: %s", err)
+	}
+	build.ResultStatus = string(status)
+
+	if err := build.Update(d.connection); err != nil {
+		return fmt.Errorf("update UpdateBuildStatus failed for repo: %s commit: %s %+v| err: %s", repositoryHash, commit, build, err)
+	}
+	return nil
+}
+
 func (d *PostgresDBRepository) GetBuildsByRepositoryHash(repositoryHash string) (*[]Build, error) {
-	rows, err := d.connection.Query("select * from public.build where repository_hash=?", repositoryHash)
+	rows, err := d.connection.Query("select * from public.build where repository_hash=$1", repositoryHash)
 	if err != nil {
 		return nil, fmt.Errorf("cannot query for GetBuildsByRepositoryHash %s", err)
 	}
@@ -83,28 +96,30 @@ func (d *PostgresDBRepository) GetBuildsByRepositoryHash(repositoryHash string) 
 		if err != nil {
 			return nil, fmt.Errorf("GetBuildsByRepositoryHash scan Build object failed %s", err)
 		}
+		build._exists = true
 		builds = append(builds, build)
 	}
 
 	return &builds, nil
 }
-func (d *PostgresDBRepository) GetBuildByCommitHash(commitHash string) (*Build, error) {
-	row := d.connection.QueryRow("select * from public.build where commit_hash=?", commitHash)
+func (d *PostgresDBRepository) GetBuildBy(repositoryHash, commitHash string) (*Build, error) {
+	row := d.connection.QueryRow("select * from public.build where repository_hash=$1 and commit_hash=$2", repositoryHash, commitHash)
 
 	build := Build{}
 	err := row.Scan(&build.UID,
-		&build.ResultStatus,
 		&build.RepositoryHash,
+		&build.CommitHash,
 		&build.PipelineJSON,
 		&build.Logs,
-		&build.FinishAt,
-		&build.CreatedAt,
-		&build.CommitHash,
+		&build.ResultStatus,
 		&build.ArtifactsUID,
+		&build.CreatedAt,
+		&build.FinishAt,
 	)
 	if err != nil {
 		return nil, fmt.Errorf("GetBuildByCommitHash scan Build object failed %s", err)
 	}
+	build._exists = true
 
 	return &build, nil
 
@@ -124,7 +139,7 @@ func (d *PostgresDBRepository) SetLastBuildCommit(key string, commitHash string)
 
 }
 func (d *PostgresDBRepository) GetLastBuildCommit(key string) (commitHash *string, createOn *int64, error error) {
-	row := d.connection.QueryRow("select * from public.kv_build_last_commit where key=? order by id desc", commitHash)
+	row := d.connection.QueryRow("select * from public.kv_build_last_commit where key=$1 order by id desc", commitHash)
 
 	lastCommit := KvBuildLastCommit{}
 	err := row.Scan(&lastCommit.ID,
@@ -135,6 +150,7 @@ func (d *PostgresDBRepository) GetLastBuildCommit(key string) (commitHash *strin
 	if err != nil {
 		return nil, nil, fmt.Errorf("GetLastBuildCommit scan KvBuildLastCommit object failed %s", err)
 	}
+	lastCommit._exists = true
 
 	return &lastCommit.ValueHashCommit, &lastCommit.CreatedAt, nil
 }
@@ -144,6 +160,8 @@ func getRepositories(rows *sql.Rows) *[]Repository {
 	for rows.Next() {
 		repo := Repository{}
 		rows.Scan(&repo.RepoHash, &repo.RepositoryURL, &repo.DefaultBranch, &repo.Name, &repo.CreatedAt, &repo.ProjectUID)
+		repo._exists = true
+
 		repositories = append(repositories, repo)
 	}
 
