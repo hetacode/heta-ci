@@ -14,6 +14,7 @@ import (
 	"github.com/go-git/go-git/v5/storage/memory"
 	"github.com/hashicorp/go-uuid"
 	"github.com/hetacode/heta-ci/commons"
+	"github.com/hetacode/heta-ci/controller/app"
 	"github.com/hetacode/heta-ci/controller/utils"
 	"github.com/hetacode/heta-ci/structs"
 	"github.com/robfig/cron/v3"
@@ -21,13 +22,13 @@ import (
 )
 
 type RepositoryPeriodicJob struct {
-	controller *utils.Controller
+	controller *app.Controller
 	lastRun    int64
 	cron       string
 	isRunning  bool
 }
 
-func NewRepositoryPeriodicJob(cron string, ctrl *utils.Controller) *RepositoryPeriodicJob {
+func NewRepositoryPeriodicJob(cron string, ctrl *app.Controller) *RepositoryPeriodicJob {
 	j := &RepositoryPeriodicJob{
 		controller: ctrl,
 		lastRun:    0,
@@ -124,7 +125,8 @@ func (j *RepositoryPeriodicJob) findAndRunBranches(pipeline *structs.Pipeline, r
 
 func (j *RepositoryPeriodicJob) prepareBuildPipeline(pipeline *structs.Pipeline, repository *utils.Repository, runOnType structs.RunOnType, runOnValue string) error {
 	var repoBytes []byte
-	lastCommitHash := j.controller.BuildLastCommits.Get(repository.ID, runOnType, runOnValue)
+
+	lastCommitHash := j.controller.BuildLastCommits.Get(j.controller.DBRepository, repository.ID, runOnType, runOnValue)
 	if lastCommitHash == nil {
 		rc, err := git.Clone(memory.NewStorage(), nil, &git.CloneOptions{
 			URL:           repository.Url,
@@ -140,6 +142,9 @@ func (j *RepositoryPeriodicJob) prepareBuildPipeline(pipeline *structs.Pipeline,
 			return fmt.Errorf("get repo tree failed %s", err)
 		}
 
+		log.Printf("start job for: %s repo | %s branch | %s head hash", repository.Url, runOnValue, ref.Hash().String())
+		commitSha := ref.Hash().String()
+		lastCommitHash = &commitSha
 		repoBytes, err = j.archiveRepoAndSaveLastCommit(tree, ref.Hash().String(), repository.ID, runOnType, runOnValue)
 		if err != nil {
 			return err
@@ -182,6 +187,9 @@ func (j *RepositoryPeriodicJob) prepareBuildPipeline(pipeline *structs.Pipeline,
 		}
 
 		log.Printf("start job for: %s repo | %s branch | %s last hash | %s head hash", repository.Url, runOnValue, *lastCommitHash, ref.Hash().String())
+
+		commitSha := ref.Hash().String()
+		lastCommitHash = &commitSha
 		repoBytes, err = j.archiveRepoAndSaveLastCommit(headTree, ref.Hash().String(), repository.ID, runOnType, runOnValue)
 		if err != nil {
 			return err
@@ -194,11 +202,14 @@ func (j *RepositoryPeriodicJob) prepareBuildPipeline(pipeline *structs.Pipeline,
 		return fmt.Errorf("save repository archive failed | path %s err %s", filePath, err)
 	}
 
-	w := utils.NewPipelineBuild(pipeline, j.controller.AskAgentCh)
-	j.controller.RegisterBuild(w)
+	// Create build
+	w := utils.NewPipelineBuild(pipeline, j.controller.DBRepository, j.controller.AskAgentCh, repository.ID, *lastCommitHash)
+	if err := j.controller.RegisterBuild(w, repository.ID, *lastCommitHash); err != nil {
+		return err
+	}
 	go w.Run()
 
-	fmt.Println("end processeing " + runOnValue)
+	fmt.Println("end processing " + runOnValue)
 	return nil
 }
 
@@ -212,7 +223,7 @@ func (j *RepositoryPeriodicJob) archiveRepoAndSaveLastCommit(tree *object.Tree, 
 		return nil, fmt.Errorf("archive repo failed %s", err)
 	}
 
-	j.controller.BuildLastCommits.Add(repositoryID, runOnType, runOnValue, commitSha)
+	j.controller.BuildLastCommits.Add(j.controller.DBRepository, repositoryID, runOnType, runOnValue, commitSha)
 
 	return repoBytes, nil
 }

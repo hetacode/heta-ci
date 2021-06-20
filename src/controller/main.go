@@ -1,20 +1,21 @@
 package main
 
 import (
-	"crypto/sha256"
-	"encoding/hex"
 	"log"
 	"net"
 	"net/http"
 
 	"github.com/gorilla/mux"
 	goeh "github.com/hetacode/go-eh"
+	"github.com/hetacode/heta-ci/controller/app"
+	"github.com/hetacode/heta-ci/controller/db"
 	"github.com/hetacode/heta-ci/controller/eventhandlers"
 	"github.com/hetacode/heta-ci/controller/handlers"
 	"github.com/hetacode/heta-ci/controller/jobs"
 	"github.com/hetacode/heta-ci/controller/utils"
 	"github.com/hetacode/heta-ci/events/agent"
 	"github.com/hetacode/heta-ci/proto"
+	_ "github.com/lib/pq"
 	"google.golang.org/grpc"
 )
 
@@ -24,13 +25,17 @@ func main() {
 
 	// ############
 
+	dbRepository, err := db.NewPostgresDBRepository("pgsql://postgres:postgrespass@localhost/heta-ci?sslmode=disable")
+	if err != nil {
+		log.Fatal(err)
+	}
 	addAgentCh := make(chan *utils.Agent)
 	removeAgentCh := make(chan *utils.Agent)
 
-	c := utils.NewController(addAgentCh, removeAgentCh)
+	c := app.NewController(dbRepository, addAgentCh, removeAgentCh)
 	ehm := registerEventHandlers(c)
 
-	r := prepareRepositories()
+	r := prepareRepositories(dbRepository)
 	c.Repositories = r
 
 	// TODO: for test
@@ -52,7 +57,7 @@ func main() {
 	}
 }
 
-func initRestApi(c *utils.Controller) {
+func initRestApi(c *app.Controller) {
 	h := &handlers.Handlers{Controller: c}
 	r := mux.NewRouter()
 	r.HandleFunc("/download/{category}/{buildId}", h.DownloadFileHandler)
@@ -64,7 +69,7 @@ func initRestApi(c *utils.Controller) {
 	srv.ListenAndServe()
 }
 
-func registerEventHandlers(c *utils.Controller) *goeh.EventsHandlerManager {
+func registerEventHandlers(c *app.Controller) *goeh.EventsHandlerManager {
 	ehm := goeh.NewEventsHandlerManager()
 	ehm.Register(new(agent.LogMessageEvent), &eventhandlers.LogMessageEventHandler{Controller: c})
 	ehm.Register(new(agent.JobFinishedEvent), &eventhandlers.JobFinishedEventHandler{Controller: c})
@@ -73,16 +78,22 @@ func registerEventHandlers(c *utils.Controller) *goeh.EventsHandlerManager {
 }
 
 // TODO: temporary function
-// that should be fetch from DB
-func prepareRepositories() []utils.Repository {
-	repo := "https://github.com/hetacode/heta-ci-test-example.git"
-	sha := sha256.New()
-	sha.Write([]byte(repo))
-	repos := []utils.Repository{
-		{ID: hex.EncodeToString(sha.Sum(nil)), Url: repo, DefaultBranch: "master"},
+func prepareRepositories(dbRepository db.DBRepository) []utils.Repository {
+	dbRepos, err := dbRepository.GetRepositories()
+	if err != nil {
+		log.Fatal(err)
+	}
+	repositories := make([]utils.Repository, 0)
+	for _, r := range *dbRepos {
+		repo := utils.Repository{
+			ID:            r.RepoHash,
+			Url:           r.RepositoryURL,
+			DefaultBranch: r.DefaultBranch,
+		}
+		repositories = append(repositories, repo)
 	}
 
-	return repos
+	return repositories
 }
 
 // func preparePipeline() *structs.Pipeline {
