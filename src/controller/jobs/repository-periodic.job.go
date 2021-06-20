@@ -101,19 +101,19 @@ func (j *RepositoryPeriodicJob) run() {
 		for _, ro := range pipeline.RunOn {
 			switch ro.Type {
 			case structs.RunOnBranch:
-				j.findAndRunBranches(pipeline, &r, ro.On, branches)
+				j.findAndRunBranches(&r, ro.On, branches)
 			}
 		}
 	}
 }
 
-func (j *RepositoryPeriodicJob) findAndRunBranches(pipeline *structs.Pipeline, repository *utils.Repository, runOnPattern string, branches []string) error {
+func (j *RepositoryPeriodicJob) findAndRunBranches(repository *utils.Repository, runOnPattern string, branches []string) error {
 	checkPattern := regexp.MustCompile(runOnPattern)
 	for _, b := range branches {
 		isCorrectPattern := checkPattern.MatchString(b)
 		fmt.Printf("repoID: %s check '%s' pattern: %s - %t \n", repository.ID, runOnPattern, b, isCorrectPattern)
 		if isCorrectPattern {
-			if err := j.prepareBuildPipeline(pipeline, repository, structs.RunOnBranch, b); err != nil {
+			if err := j.prepareBuildPipeline(repository, structs.RunOnBranch, b); err != nil {
 				fmt.Printf("prepareBuildPipeline err %s\n", err)
 			}
 
@@ -123,8 +123,11 @@ func (j *RepositoryPeriodicJob) findAndRunBranches(pipeline *structs.Pipeline, r
 	return nil
 }
 
-func (j *RepositoryPeriodicJob) prepareBuildPipeline(pipeline *structs.Pipeline, repository *utils.Repository, runOnType structs.RunOnType, runOnValue string) error {
+func (j *RepositoryPeriodicJob) prepareBuildPipeline(repository *utils.Repository, runOnType structs.RunOnType, runOnValue string) error {
 	var repoBytes []byte
+	// default pipeline - this version is to fetch run filters
+	// tree pipeline - it's a pipeline from exactly that fetched commit
+	var pipeline *structs.Pipeline
 
 	lastCommitHash := j.controller.BuildLastCommits.Get(j.controller.DBRepository, repository.ID, runOnType, runOnValue)
 	if lastCommitHash == nil {
@@ -146,6 +149,10 @@ func (j *RepositoryPeriodicJob) prepareBuildPipeline(pipeline *structs.Pipeline,
 		commitSha := ref.Hash().String()
 		lastCommitHash = &commitSha
 		repoBytes, err = j.archiveRepoAndSaveLastCommit(tree, ref.Hash().String(), repository.ID, runOnType, runOnValue)
+		if err != nil {
+			return err
+		}
+		pipeline, err = j.getPipelineFrom(tree, runOnValue)
 		if err != nil {
 			return err
 		}
@@ -194,6 +201,10 @@ func (j *RepositoryPeriodicJob) prepareBuildPipeline(pipeline *structs.Pipeline,
 		if err != nil {
 			return err
 		}
+		pipeline, err = j.getPipelineFrom(headTree, runOnValue)
+		if err != nil {
+			return err
+		}
 	}
 	repositoryArchiveID, _ := uuid.GenerateUUID()
 	pipeline.RepositoryArchiveID = repositoryArchiveID
@@ -204,7 +215,7 @@ func (j *RepositoryPeriodicJob) prepareBuildPipeline(pipeline *structs.Pipeline,
 
 	// Create build
 	w := utils.NewPipelineBuild(pipeline, j.controller.DBRepository, j.controller.AskAgentCh, repository.ID, *lastCommitHash)
-	if err := j.controller.RegisterBuild(w, repository.ID, *lastCommitHash); err != nil {
+	if err := j.controller.RegisterBuild(w); err != nil {
 		return err
 	}
 	go w.Run()
@@ -226,6 +237,21 @@ func (j *RepositoryPeriodicJob) archiveRepoAndSaveLastCommit(tree *object.Tree, 
 	j.controller.BuildLastCommits.Add(j.controller.DBRepository, repositoryID, runOnType, runOnValue, commitSha)
 
 	return repoBytes, nil
+}
+
+// getPipelineFrom given tree
+func (j *RepositoryPeriodicJob) getPipelineFrom(tree *object.Tree, branch string) (*structs.Pipeline, error) {
+	pf, err := tree.File(".heta-ci/pipeline.yaml")
+	if err != nil {
+		return nil, fmt.Errorf("read pipeline file failed in %s branch err: %s", branch, err)
+	}
+	c, _ := pf.Contents()
+	var pipeline *structs.Pipeline
+	if err := yaml.Unmarshal([]byte(c), &pipeline); err != nil {
+		return nil, fmt.Errorf("unmarshal pipeline file failed in %s branch err %s", branch, err)
+	}
+
+	return pipeline, nil
 }
 
 type convertGitFileIterToZipFileIter struct {
