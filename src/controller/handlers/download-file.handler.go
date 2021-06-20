@@ -57,7 +57,7 @@ func (h *Handlers) prepareAndGetCodeRepository(buildID string) ([]byte, error) {
 	return bytes, nil
 }
 
-func (h *Handlers) prepareAndGetArtifacts(build *utils.PipelineBuild) ([]byte, error) {
+func (h *Handlers) prepareAndGetArtifacts(build *utils.Build) ([]byte, error) {
 	artifactsFilePath := build.ArtifactsDir + "/artifacts.zip"
 	exists, err := commons.IsFileExists(artifactsFilePath)
 	if err != nil {

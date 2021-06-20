@@ -15,18 +15,10 @@ import (
 	"github.com/hetacode/heta-ci/structs"
 )
 
-type PipelineStatus string
-
-const (
-	PipelineStatusIdle    PipelineStatus = "idle"
-	PipelineStatusWorking                = "working"
-)
-
-type PipelineBuild struct {
+type Build struct {
 	ID             string
 	RepositoryHash string
 	CommitHash     string
-	Status         PipelineStatus
 	Pipeline       *structs.Pipeline
 	Agent          *Agent
 	Triggers       *PipelineTriggers
@@ -41,12 +33,12 @@ type PipelineBuild struct {
 	askAgentChan      chan string
 }
 
-func NewPipelineBuild(p *structs.Pipeline, dbRepository db.DBRepository, askAgentCh chan string, repositoryHash, commitHash string) *PipelineBuild {
+func NewBuild(p *structs.Pipeline, dbRepository db.DBRepository, askAgentCh chan string, repositoryHash, commitHash string) *Build {
 	logCh := make(chan string)
 	errLogCh := make(chan string)
 
 	uid, _ := uuid.GenerateUUID()
-	w := &PipelineBuild{
+	w := &Build{
 		ID:                    uid,
 		Pipeline:              p,
 		LogChan:               logCh,
@@ -65,8 +57,7 @@ func NewPipelineBuild(p *structs.Pipeline, dbRepository db.DBRepository, askAgen
 	return w
 }
 
-func (w *PipelineBuild) Run() {
-	w.Status = PipelineStatusWorking
+func (w *Build) Run() {
 	w.Triggers.RegisterJobsFor(w.Pipeline)
 
 	// TODO:
@@ -91,7 +82,7 @@ func (w *PipelineBuild) Run() {
 	}
 }
 
-func (b *PipelineBuild) StartJob(job *structs.Job, isConditional bool) error {
+func (b *Build) StartJob(job *structs.Job, isConditional bool) error {
 	artifactsFilePath := b.ArtifactsDir + "/artifacts.zip"
 	hasArtifacts, err := commons.IsFileExists(artifactsFilePath)
 	if err != nil {
@@ -122,7 +113,7 @@ func (b *PipelineBuild) StartJob(job *structs.Job, isConditional bool) error {
 	return nil
 }
 
-func (b *PipelineBuild) logs() {
+func (b *Build) logs() {
 	for {
 		select {
 		case logStr := <-b.LogChan:
@@ -134,7 +125,7 @@ func (b *PipelineBuild) logs() {
 	}
 }
 
-func (b *PipelineBuild) initBuildDirs(pipelineID string) error {
+func (b *Build) initBuildDirs(pipelineID string) error {
 	pipelineDir := path.Join(PipelinesDir, pipelineID)
 	artifactsDir := path.Join(pipelineDir, ArtifactsDir)
 

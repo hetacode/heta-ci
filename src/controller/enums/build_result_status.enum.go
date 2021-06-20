@@ -1,10 +1,10 @@
 package enums
 
-type BuildResultStatus string
+type BuildStatus string
 
 const (
-	BuildStatusNone              BuildResultStatus = "none"
-	BuildStatusRunning           BuildResultStatus = "running"
-	BuildStatusFinishWithSucces  BuildResultStatus = "finish_with_success"
-	BuildStatusFinishWithFailure BuildResultStatus = "finish_with_failure"
+	BuildStatusNone              BuildStatus = "none"
+	BuildStatusRunning           BuildStatus = "running"
+	BuildStatusFinishWithSucces  BuildStatus = "finish_with_success"
+	BuildStatusFinishWithFailure BuildStatus = "finish_with_failure"
 )

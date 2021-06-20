@@ -17,7 +17,7 @@ import (
 type Controller struct {
 	DBRepository     db.DBRepository
 	Repositories     []utils.Repository
-	Builds           map[string]*utils.PipelineBuild
+	Builds           map[string]*utils.Build
 	BuildLastCommits intlstructs.BuildLastCommits
 	pipelines        []*structs.Pipeline
 	agents           []*utils.Agent // list of free agents
@@ -32,7 +32,7 @@ type Controller struct {
 func NewController(dbRepository db.DBRepository, addAgentCh, removeAgentCh chan *utils.Agent) *Controller {
 	c := &Controller{
 		DBRepository:          dbRepository,
-		Builds:                make(map[string]*utils.PipelineBuild),
+		Builds:                make(map[string]*utils.Build),
 		BuildLastCommits:      make(intlstructs.BuildLastCommits),
 		pipelines:             make([]*structs.Pipeline, 0),
 		agents:                make([]*utils.Agent, 0),
@@ -58,7 +58,7 @@ func (c *Controller) AddPipeline(p *structs.Pipeline) {
 	c.pipelines = append(c.pipelines, p)
 }
 
-func (c *Controller) RegisterBuild(build *utils.PipelineBuild) error {
+func (c *Controller) RegisterBuild(build *utils.Build) error {
 	if err := c.DBRepository.StoreBuildData(build.ID, build.Pipeline, build.RepositoryHash, build.CommitHash); err != nil {
 		return fmt.Errorf("store build data in db failed %s", err)
 	}

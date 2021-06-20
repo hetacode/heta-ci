@@ -17,7 +17,7 @@ type Build struct {
 	CommitHash     string         `json:"commit_hash"`     // commit_hash
 	PipelineJSON   string         `json:"pipeline_json"`   // pipeline_json
 	Logs           sql.NullString `json:"logs"`            // logs
-	ResultStatus   string         `json:"result_status"`   // result_status
+	Status         string         `json:"status"`          // status
 	ArtifactsUID   uuid.UUID      `json:"artifacts_uid"`   // artifacts_uid
 	CreatedAt      int64          `json:"created_at"`      // created_at
 	FinishAt       sql.NullInt64  `json:"finish_at"`       // finish_at
@@ -47,14 +47,14 @@ func (b *Build) Insert(db XODB) error {
 
 	// sql insert query, primary key must be provided
 	const sqlstr = `INSERT INTO public.build (` +
-		`uid, repository_hash, commit_hash, pipeline_json, logs, result_status, artifacts_uid, created_at, finish_at` +
+		`uid, repository_hash, commit_hash, pipeline_json, logs, status, artifacts_uid, created_at, finish_at` +
 		`) VALUES (` +
 		`$1, $2, $3, $4, $5, $6, $7, $8, $9` +
 		`)`
 
 	// run query
-	XOLog(sqlstr, b.UID, b.RepositoryHash, b.CommitHash, b.PipelineJSON, b.Logs, b.ResultStatus, b.ArtifactsUID, b.CreatedAt, b.FinishAt)
-	err = db.QueryRow(sqlstr, b.UID, b.RepositoryHash, b.CommitHash, b.PipelineJSON, b.Logs, b.ResultStatus, b.ArtifactsUID, b.CreatedAt, b.FinishAt).Scan(&b.UID)
+	XOLog(sqlstr, b.UID, b.RepositoryHash, b.CommitHash, b.PipelineJSON, b.Logs, b.Status, b.ArtifactsUID, b.CreatedAt, b.FinishAt)
+	err = db.QueryRow(sqlstr, b.UID, b.RepositoryHash, b.CommitHash, b.PipelineJSON, b.Logs, b.Status, b.ArtifactsUID, b.CreatedAt, b.FinishAt).Scan(&b.UID)
 	if err != nil {
 		return err
 	}
@@ -81,14 +81,14 @@ func (b *Build) Update(db XODB) error {
 
 	// sql query
 	const sqlstr = `UPDATE public.build SET (` +
-		`repository_hash, commit_hash, pipeline_json, logs, result_status, artifacts_uid, created_at, finish_at` +
+		`repository_hash, commit_hash, pipeline_json, logs, status, artifacts_uid, created_at, finish_at` +
 		`) = ( ` +
 		`$1, $2, $3, $4, $5, $6, $7, $8` +
 		`) WHERE uid = $9`
 
 	// run query
-	XOLog(sqlstr, b.RepositoryHash, b.CommitHash, b.PipelineJSON, b.Logs, b.ResultStatus, b.ArtifactsUID, b.CreatedAt, b.FinishAt, b.UID)
-	_, err = db.Exec(sqlstr, b.RepositoryHash, b.CommitHash, b.PipelineJSON, b.Logs, b.ResultStatus, b.ArtifactsUID, b.CreatedAt, b.FinishAt, b.UID)
+	XOLog(sqlstr, b.RepositoryHash, b.CommitHash, b.PipelineJSON, b.Logs, b.Status, b.ArtifactsUID, b.CreatedAt, b.FinishAt, b.UID)
+	_, err = db.Exec(sqlstr, b.RepositoryHash, b.CommitHash, b.PipelineJSON, b.Logs, b.Status, b.ArtifactsUID, b.CreatedAt, b.FinishAt, b.UID)
 	return err
 }
 
@@ -114,18 +114,18 @@ func (b *Build) Upsert(db XODB) error {
 
 	// sql query
 	const sqlstr = `INSERT INTO public.build (` +
-		`uid, repository_hash, commit_hash, pipeline_json, logs, result_status, artifacts_uid, created_at, finish_at` +
+		`uid, repository_hash, commit_hash, pipeline_json, logs, status, artifacts_uid, created_at, finish_at` +
 		`) VALUES (` +
 		`$1, $2, $3, $4, $5, $6, $7, $8, $9` +
 		`) ON CONFLICT (uid) DO UPDATE SET (` +
-		`uid, repository_hash, commit_hash, pipeline_json, logs, result_status, artifacts_uid, created_at, finish_at` +
+		`uid, repository_hash, commit_hash, pipeline_json, logs, status, artifacts_uid, created_at, finish_at` +
 		`) = (` +
-		`EXCLUDED.uid, EXCLUDED.repository_hash, EXCLUDED.commit_hash, EXCLUDED.pipeline_json, EXCLUDED.logs, EXCLUDED.result_status, EXCLUDED.artifacts_uid, EXCLUDED.created_at, EXCLUDED.finish_at` +
+		`EXCLUDED.uid, EXCLUDED.repository_hash, EXCLUDED.commit_hash, EXCLUDED.pipeline_json, EXCLUDED.logs, EXCLUDED.status, EXCLUDED.artifacts_uid, EXCLUDED.created_at, EXCLUDED.finish_at` +
 		`)`
 
 	// run query
-	XOLog(sqlstr, b.UID, b.RepositoryHash, b.CommitHash, b.PipelineJSON, b.Logs, b.ResultStatus, b.ArtifactsUID, b.CreatedAt, b.FinishAt)
-	_, err = db.Exec(sqlstr, b.UID, b.RepositoryHash, b.CommitHash, b.PipelineJSON, b.Logs, b.ResultStatus, b.ArtifactsUID, b.CreatedAt, b.FinishAt)
+	XOLog(sqlstr, b.UID, b.RepositoryHash, b.CommitHash, b.PipelineJSON, b.Logs, b.Status, b.ArtifactsUID, b.CreatedAt, b.FinishAt)
+	_, err = db.Exec(sqlstr, b.UID, b.RepositoryHash, b.CommitHash, b.PipelineJSON, b.Logs, b.Status, b.ArtifactsUID, b.CreatedAt, b.FinishAt)
 	if err != nil {
 		return err
 	}
@@ -174,7 +174,7 @@ func BuildByUID(db XODB, uid uuid.UUID) (*Build, error) {
 
 	// sql query
 	const sqlstr = `SELECT ` +
-		`uid, repository_hash, commit_hash, pipeline_json, logs, result_status, artifacts_uid, created_at, finish_at ` +
+		`uid, repository_hash, commit_hash, pipeline_json, logs, status, artifacts_uid, created_at, finish_at ` +
 		`FROM public.build ` +
 		`WHERE uid = $1`
 
@@ -184,7 +184,7 @@ func BuildByUID(db XODB, uid uuid.UUID) (*Build, error) {
 		_exists: true,
 	}
 
-	err = db.QueryRow(sqlstr, uid).Scan(&b.UID, &b.RepositoryHash, &b.CommitHash, &b.PipelineJSON, &b.Logs, &b.ResultStatus, &b.ArtifactsUID, &b.CreatedAt, &b.FinishAt)
+	err = db.QueryRow(sqlstr, uid).Scan(&b.UID, &b.RepositoryHash, &b.CommitHash, &b.PipelineJSON, &b.Logs, &b.Status, &b.ArtifactsUID, &b.CreatedAt, &b.FinishAt)
 	if err != nil {
 		return nil, err
 	}

@@ -50,7 +50,7 @@ func (d *PostgresDBRepository) StoreBuildData(id string, pipeline *structs.Pipel
 		RepositoryHash: repositoryHash,
 		CommitHash:     commitHash,
 		PipelineJSON:   string(pipelineBytes),
-		ResultStatus:   string(enums.BuildStatusNone),
+		Status:         string(enums.BuildStatusNone),
 		CreatedAt:      time.Now().Unix(),
 	}
 	err := dbBuild.Insert(d.connection)
@@ -61,12 +61,12 @@ func (d *PostgresDBRepository) StoreBuildData(id string, pipeline *structs.Pipel
 	return nil
 }
 
-func (d *PostgresDBRepository) UpdateBuildStatus(repositoryHash, commit string, status enums.BuildResultStatus) error {
+func (d *PostgresDBRepository) UpdateBuildStatus(repositoryHash, commit string, status enums.BuildStatus) error {
 	build, err := d.GetBuildBy(repositoryHash, commit)
 	if err != nil {
 		return fmt.Errorf("UpdateBuildStatus get build failed: %s", err)
 	}
-	build.ResultStatus = string(status)
+	build.Status = string(status)
 
 	if err := build.Update(d.connection); err != nil {
 		return fmt.Errorf("update UpdateBuildStatus failed for repo: %s commit: %s %+v| err: %s", repositoryHash, commit, build, err)
@@ -84,7 +84,7 @@ func (d *PostgresDBRepository) GetBuildsByRepositoryHash(repositoryHash string) 
 	for rows.Next() {
 		build := Build{}
 		err := rows.Scan(&build.UID,
-			&build.ResultStatus,
+			&build.Status,
 			&build.RepositoryHash,
 			&build.PipelineJSON,
 			&build.Logs,
@@ -111,7 +111,7 @@ func (d *PostgresDBRepository) GetBuildBy(repositoryHash, commitHash string) (*B
 		&build.CommitHash,
 		&build.PipelineJSON,
 		&build.Logs,
-		&build.ResultStatus,
+		&build.Status,
 		&build.ArtifactsUID,
 		&build.CreatedAt,
 		&build.FinishAt,

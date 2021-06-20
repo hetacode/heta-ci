@@ -214,7 +214,7 @@ func (j *RepositoryPeriodicJob) prepareBuildPipeline(repository *utils.Repositor
 	}
 
 	// Create build
-	w := utils.NewPipelineBuild(pipeline, j.controller.DBRepository, j.controller.AskAgentCh, repository.ID, *lastCommitHash)
+	w := utils.NewBuild(pipeline, j.controller.DBRepository, j.controller.AskAgentCh, repository.ID, *lastCommitHash)
 	if err := j.controller.RegisterBuild(w); err != nil {
 		return err
 	}
