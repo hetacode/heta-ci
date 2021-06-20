@@ -139,7 +139,7 @@ func (d *PostgresDBRepository) SetLastBuildCommit(key string, commitHash string)
 
 }
 func (d *PostgresDBRepository) GetLastBuildCommit(key string) (commitHash *string, createOn *int64, error error) {
-	row := d.connection.QueryRow("select * from public.kv_build_last_commit where key=$1 order by id desc", commitHash)
+	row := d.connection.QueryRow("select * from public.kv_build_last_commit where key=$1 order by id desc", key)
 
 	lastCommit := KvBuildLastCommit{}
 	err := row.Scan(&lastCommit.ID,
